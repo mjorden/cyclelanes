@@ -13,7 +13,10 @@ cl_fetch_crashes(
 )
 }
 \arguments{
-\item{city}{A key from \code{\link[=cl_crash_sources]{cl_crash_sources()}}. Default \code{"denver"}.}
+\item{city}{A key from \code{\link[=cl_crash_sources]{cl_crash_sources()}}, default \code{"denver"}, or a
+place name with no registered source, in which case the crashes come
+from NHTSA's FARS through \code{\link[=cl_fetch_fars]{cl_fetch_fars()}} -- fatalities only, and
+\code{years} is then required.}
 
 \item{years}{Optional integer vector of years to keep, e.g. \code{2019:2025}.}
 

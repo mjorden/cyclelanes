@@ -116,3 +116,12 @@ test_that("live: Denver bicycle crashes read for one year in the downtown box", 
   expect_true(all(as.character(x$severity) %in% c("fatal", "serious", "minor", "none", "unknown")))
   expect_true(any(x$location_type == "intersection"))
 })
+
+test_that("live: FARS 2022 has bicyclist fatalities inside Denver", {
+  skip_unless_live("static.nhtsa.gov")
+  x <- cl_fetch_fars(2022, bbox = c(-105.11, 39.61, -104.60, 39.91))
+  expect_gt(nrow(x), 0)
+  expect_lt(nrow(x), 40)
+  expect_true(all(x$bicycle))
+  expect_true(all(as.character(x$severity) == "fatal"))
+})

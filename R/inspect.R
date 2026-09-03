@@ -20,9 +20,9 @@
 #'   (WGS84 `c(xmin, ymin, xmax, ymax)`) with `centre`.
 #' @examples
 #' \dontrun{
-#' cl_inspect_source(
-#'   "https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/ArcGIS/rest/services/Denver_Bicycle_Facilities_ODC/FeatureServer/450"
-#' )
+#' denver <- paste0("https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/ArcGIS/rest/services/",
+#'                  "Denver_Bicycle_Facilities_ODC/FeatureServer/450")
+#' cl_inspect_source(denver)
 #' }
 #' @export
 cl_inspect_source <- function(url, type = NULL, max_values = 30, sample = 2000) {
