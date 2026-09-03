@@ -8,7 +8,8 @@
 #'   official Denver layer `c("facility_type", "status")` is informative.
 #' @return A data frame with `n_segments`, `length_km`, `length_mi`, and
 #'   `share` (fraction of total length) per group. Empty groups of a factor
-#'   are omitted.
+#'   are omitted. For a point layer such as [cl_fetch_crashes()] output the
+#'   columns are `n` and `share` (fraction of the count).
 #' @examples
 #' cl_summary(cl_classify(denver_lodo$osm, drop_none = TRUE))
 #' cl_summary(denver_lodo$official, by = c("facility_type", "status"))
@@ -23,6 +24,14 @@ cl_summary <- function(x, by = "facility_type") {
     rlang::abort(sprintf("Column(s) not found in `x`: %s", paste(missing, collapse = ", ")))
   }
   d <- sf::st_drop_geometry(x)
+  if (nrow(x) && all(sf::st_geometry_type(x) %in% c("POINT", "MULTIPOINT"))) {
+    out <- d |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(by))) |>
+      dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
+      dplyr::mutate(share = .data$n / sum(.data$n)) |>
+      dplyr::arrange(dplyr::across(dplyr::all_of(by)))
+    return(as.data.frame(out))
+  }
   d$.len <- .length_m(x)
   out <- d |>
     dplyr::group_by(dplyr::across(dplyr::all_of(by))) |>

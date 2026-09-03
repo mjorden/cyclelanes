@@ -139,6 +139,22 @@ lanes <- cl_classify(denver_lodo$osm, drop_none = TRUE)
 cl_compare(lanes, denver_lodo$official)
 ```
 
+## Crashes
+
+The same registry pattern reads a city's reported crashes, so the two
+halves of the safety story sit in one frame:
+
+```r
+crashes <- cl_fetch_crashes("denver", years = 2019:2025)   # bicycle-involved by default
+cl_summary(crashes, by = "severity")
+```
+
+Denver's police layer is built in; other cities register with
+`cl_register_crash_source()`. Police data miss about half of bicycle
+injury crashes and nearly all crashes without a motor vehicle, so these
+are *reported* crashes, and the layer is revised continuously, so the
+fetch time travels with the result.
+
 ## The taxonomy
 
 Every facility from either source lands in one of these levels, ordered
