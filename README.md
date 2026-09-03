@@ -102,6 +102,20 @@ stacks the summaries:
 growth <- cl_timeline("Boulder, Colorado", dates = paste0(2014:2026, "-01-01"))
 ```
 
+Whether those comfortable facilities connect to each other is the next
+question. `cl_components()` keeps the segments at or below a stress level,
+snaps them into an `sfnetworks` graph, and labels each with its connected
+component, largest first; `cl_map()` puts any of these layers on an
+interactive `leaflet` map with a link from each segment to its way on
+openstreetmap.org, so a mapper can fix a tag from the map.
+
+```r
+low <- cl_components(stress, max_lts = 2)
+head(attr(low, "components"))       # the low-stress islands, largest first
+cl_plot(low, colour = "component")
+cl_map(cmp)                          # both layers, with the gaps highlighted
+```
+
 `cl_lts()` follows the Mekuria, Furth and Nixon (2012) criteria as
 simplified in Furth's 2017 tables, on segments only (no intersection
 approaches or parking conflicts). Where a road has no `maxspeed` or
