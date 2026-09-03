@@ -5,8 +5,8 @@
 #'
 #' @param place One of:
 #'   * a place name geocoded through Nominatim, e.g. `"Denver, Colorado"`
-#'     (see [osmdata::getbb()]; respect the Nominatim usage policy -- one
-#'     request per second, no bulk geocoding);
+#'     (respect the Nominatim usage policy: at most one request per second,
+#'     no bulk geocoding);
 #'   * a numeric vector `c(xmin, ymin, xmax, ymax)` in WGS84 degrees;
 #'   * an `sf`, `sfc`, or `bbox` object in any CRS;
 #'   * the 2 x 2 matrix returned by [osmdata::getbb()].
@@ -33,12 +33,7 @@ cl_bbox <- function(place) {
     return(.validate_bbox(as.numeric(place)))
   }
   if (is.character(place) && length(place) == 1L) {
-    m <- tryCatch(osmdata::getbb(place, format_out = "matrix"),
-                  error = function(e) NULL)
-    if (is.null(m) || !is.matrix(m) || anyNA(m)) {
-      rlang::abort(sprintf("Could not geocode place name \"%s\".", place))
-    }
-    return(.validate_bbox(c(m[1, 1], m[2, 1], m[1, 2], m[2, 2])))
+    return(.geocode_bbox(place))
   }
   rlang::abort(paste(
     "`place` must be a place name, a numeric c(xmin, ymin, xmax, ymax),",
@@ -57,4 +52,56 @@ cl_bbox <- function(place) {
     rlang::abort("Bounding box must be finite WGS84 degrees with xmin < xmax and ymin < ymax.")
   }
   bb
+}
+
+# Geocoding ---------------------------------------------------------------------
+#
+# Nominatim is called directly with download.file() rather than through
+# osmdata::getbb(), which goes via httr2 and needs a recent 'curl' package
+# that older R installs cannot get as a binary.
+
+.nominatim_url <- function(place, base = "https://nominatim.openstreetmap.org") {
+  paste0(base, "/search?", .query_string(list(q = place, format = "json", limit = 10)))
+}
+
+.geocode_bbox <- function(place) {
+  url <- .nominatim_url(place)
+  tmp <- tempfile(fileext = ".json")
+  on.exit(unlink(tmp), add = TRUE)
+  ua <- sprintf("cyclelanes/%s (R package; https://github.com/mjorden/cyclelanes)",
+                as.character(utils::packageVersion("cyclelanes")))
+  status <- tryCatch(
+    utils::download.file(url, tmp, quiet = TRUE, mode = "wb", headers = c(`User-Agent` = ua)),
+    error = function(e) conditionMessage(e)
+  )
+  if (!identical(as.integer(status), 0L)) {
+    rlang::abort(c(sprintf("Could not geocode place name \"%s\": Nominatim request failed.", place),
+                   i = as.character(status)))
+  }
+  bb <- .parse_nominatim(readLines(tmp, warn = FALSE, encoding = "UTF-8"))
+  if (is.null(bb)) {
+    rlang::abort(sprintf("Could not geocode place name \"%s\": Nominatim returned no results.", place))
+  }
+  .validate_bbox(bb)
+}
+
+# Turn a Nominatim JSON response into c(xmin, ymin, xmax, ymax), preferring an
+# administrative boundary or populated place over e.g. a street of the same
+# name. NULL when there are no usable results.
+.parse_nominatim <- function(json) {
+  res <- tryCatch(jsonlite::fromJSON(paste(json, collapse = "\n"), simplifyVector = FALSE),
+                  error = function(e) NULL)
+  if (!length(res)) return(NULL)
+  score <- vapply(res, function(r) {
+    cls <- r$class %||% ""
+    typ <- r$type %||% ""
+    if (cls == "boundary" && typ == "administrative") 3
+    else if (cls == "place") 2
+    else 1
+  }, numeric(1))
+  best <- res[[which.max(score)]]
+  bb <- suppressWarnings(as.numeric(unlist(best$boundingbox)))
+  if (length(bb) != 4L || anyNA(bb)) return(NULL)
+  # Nominatim order is south, north, west, east
+  c(xmin = bb[3], ymin = bb[1], xmax = bb[4], ymax = bb[2])
 }

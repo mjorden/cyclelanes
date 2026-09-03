@@ -24,6 +24,7 @@ Imports:
     dplyr (>= 1.1.0),
     rlang,
     units,
+    jsonlite,
     utils
 Suggests:
     ggplot2,

@@ -10,8 +10,8 @@ cl_bike_lanes(place, drop_none = TRUE, keep_tags = FALSE, timeout = 180)
 \item{place}{One of:
 \itemize{
 \item a place name geocoded through Nominatim, e.g. \code{"Denver, Colorado"}
-(see \code{\link[osmdata:getbb]{osmdata::getbb()}}; respect the Nominatim usage policy -- one
-request per second, no bulk geocoding);
+(respect the Nominatim usage policy: at most one request per second,
+no bulk geocoding);
 \item a numeric vector \code{c(xmin, ymin, xmax, ymax)} in WGS84 degrees;
 \item an \code{sf}, \code{sfc}, or \code{bbox} object in any CRS;
 \item the 2 x 2 matrix returned by \code{\link[osmdata:getbb]{osmdata::getbb()}}.
