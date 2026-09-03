@@ -165,3 +165,53 @@ test_that("cl_bike_lanes passes fetch options through", {
   expect_equal(m$calls(), 2L)
   expect_equal(unique(m$urls()), "https://m.example/api/interpreter")
 })
+
+test_that("a snapshot date reaches the Overpass query and the cache key", {
+  seen <- NULL
+  m <- mock_overpass(list(function(q) { seen <<- q; osm_result("1") }))
+  out <- with_mock_overpass(m, cl_fetch_osm(box, date = "2020-06-01"))
+  expect_match(seen$prefix, "date:", fixed = TRUE)
+  expect_match(seen$prefix, "2020-06-01T00:00:00Z", fixed = TRUE)
+  expect_equal(attr(out, "cl_date"), as.Date("2020-06-01"))
+
+  m2 <- mock_overpass(list(function(q) { seen <<- q; osm_result("1") }))
+  with_mock_overpass(m2, cl_fetch_osm(box))
+  expect_false(grepl("date:", seen$prefix, fixed = TRUE))
+
+  bb <- cl_bbox(box)
+  expect_false(cyclelanes:::.overpass_cache_key(bb, NULL, "overpass", as.Date("2020-06-01")) ==
+                 cyclelanes:::.overpass_cache_key(bb, NULL, "overpass", NULL))
+  expect_false(cyclelanes:::.overpass_cache_key(bb, NULL, "overpass", as.Date("2020-06-01")) ==
+                 cyclelanes:::.overpass_cache_key(bb, NULL, "overpass", as.Date("2021-06-01")))
+})
+
+test_that("date is validated and refused for the extract backend", {
+  expect_error(cl_fetch_osm(box, date = "not a date"), "single Date")
+  expect_error(cl_fetch_osm(box, date = c("2020-01-01", "2021-01-01")), "single Date")
+  expect_error(cl_fetch_osm(box, date = Sys.Date() + 30), "future")
+  expect_error(cl_fetch_osm(box, backend = "extract", date = "2020-01-01"), "no history")
+})
+
+test_that("cl_timeline stacks one summary per date and skips failures", {
+  results <- list(
+    "2019-01-01" = osm_result("1"),
+    "2020-01-01" = osm_result(c("1", "2")),
+    "2021-01-01" = simpleError("HTTP 504 Gateway Timeout")
+  )
+  m <- mock_overpass(list(function(q) {
+    d <- sub("^.*date:\\\"([0-9-]+)T.*$", "\\1", q$prefix)
+    r <- results[[d]]
+    if (inherits(r, "condition")) stop(r)
+    r
+  }))
+  dir <- withr::local_tempdir()
+  expect_warning(
+    tl <- suppressMessages(with_mock_overpass(
+      m, cl_timeline(box, dates = names(results), cache = TRUE, cache_dir = dir, clip = FALSE, retries = 0))),
+    "2021-01-01"
+  )
+  expect_s3_class(tl, "data.frame")
+  expect_equal(unique(tl$date), as.Date(c("2019-01-01", "2020-01-01")))
+  expect_equal(tl$n_segments[tl$date == as.Date("2020-01-01")], 2L)
+  expect_true(all(c("facility_type", "length_km", "share") %in% names(tl)))
+})

@@ -51,7 +51,7 @@ polygon is supplied.}
 
 \item{...}{Passed to \code{\link[=cl_fetch_osm]{cl_fetch_osm()}}: \code{overpass_url}, \code{retries}, \code{tile},
 \code{cache}, \code{cache_dir}, \code{cache_max_age}, \code{backend}, \code{extract_dir},
-\code{max_extract_mb}.}
+\code{max_extract_mb}, \code{date}.}
 }
 \value{
 The classified \code{sf} described in \code{\link[=cl_classify]{cl_classify()}}, with the queried

@@ -94,6 +94,14 @@ cl_summary(stress, by = "lts")
 cl_plot(stress, colour = "lts")
 ```
 
+To see how a network has grown, `cl_timeline()` fetches the same place as
+it was on each of a series of dates through Overpass's attic data and
+stacks the summaries:
+
+```r
+growth <- cl_timeline("Boulder, Colorado", dates = paste0(2014:2026, "-01-01"))
+```
+
 `cl_lts()` follows the Mekuria, Furth and Nixon (2012) criteria as
 simplified in Furth's 2017 tables, on segments only (no intersection
 approaches or parking conflicts). Where a road has no `maxspeed` or

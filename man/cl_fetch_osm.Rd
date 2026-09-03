@@ -16,7 +16,8 @@ cl_fetch_osm(
   cache_max_age = 30,
   backend = c("overpass", "extract"),
   extract_dir = NULL,
-  max_extract_mb = 1000
+  max_extract_mb = 1000,
+  date = NULL
 )
 }
 \arguments{
@@ -84,6 +85,12 @@ fully contains the clip boundary (or the bounding box when there is
 none); a box that straddles a state line can match a whole multi-state
 region, and this stops that quietly turning into a multi-gigabyte
 download.}
+
+\item{date}{Fetch the network \strong{as it was} on this date (a \code{Date} or
+\code{"YYYY-MM-DD"}), using Overpass's attic data. Only the Overpass backend
+has history; asking for a date with \code{backend = "extract"} is an error.
+Attic queries are slower and heavier on the server, so use yearly
+steps and \code{cache = TRUE}. Recorded in \code{attr(x, "cl_date")}.}
 }
 \value{
 An \code{sf} object of \code{LINESTRING}s in WGS84 (EPSG:4326) with the raw
