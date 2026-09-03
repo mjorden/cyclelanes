@@ -4,7 +4,13 @@
 \alias{cl_classify}
 \title{Classify OpenStreetMap ways into the facility taxonomy}
 \usage{
-cl_classify(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
+cl_classify(
+  x,
+  drop_none = FALSE,
+  keep_tags = FALSE,
+  strict = FALSE,
+  sidepath_by_name = TRUE
+)
 }
 \arguments{
 \item{x}{An \code{sf} object from \code{\link[=cl_fetch_osm]{cl_fetch_osm()}}, or any \code{sf} of ways with
@@ -21,12 +27,20 @@ and \code{surface} survive from the input.}
 \code{concrete}, \code{paving_stones}, ...). Park footways that a mapper tagged
 bike-friendly are the bulk of what this removes; use it when you want
 on-road-quality kilometres only.}
+
+\item{sidepath_by_name}{Treat a \code{highway=cycleway} named like a street
+(a suffix such as Street, St, Avenue, Ave, Boulevard, Blvd, Road, Rd,
+Drive, Dr, Way, Lane, Ln, Parkway, Pkwy, Place, Pl, Court, Ct, and not
+Trail, Path, Greenway, Bikeway) as a separately mapped on-street lane,
+i.e. a \code{protected_lane}. See rule 1.}
 }
 \value{
 An \code{sf} with columns \code{osm_id}, \code{name}, \code{highway}, \code{facility_type},
 \code{facility_left}, \code{facility_right} (factors over \code{\link[=cl_facility_levels]{cl_facility_levels()}}),
 \code{n_sides} (0-2, \code{NA} for separated paths), \code{contraflow},
-\code{shared_with_pedestrians}, \code{oneway}, \code{surface}, \code{length_m}, and geometry.
+\code{shared_with_pedestrians}, \code{mapped_separately} (a facility drawn as its
+own way rather than as a tag on the road), \code{oneway}, \code{surface},
+\code{length_m}, and geometry.
 }
 \description{
 Normalises the OSM bicycle tagging on each way into the levels of
@@ -43,6 +57,16 @@ which case it is a \code{shared_use_path}. \code{highway=path}, \code{footway},
 \code{shared_use_path}. A sidewalk (\code{footway=sidewalk} or \code{footway=crossing})
 is never a facility, whatever its \code{bicycle} tag. Side columns are \code{NA}
 for paths.
+A \code{highway=cycleway} that is really an on-street lane drawn as its own
+way -- tagged \code{is_sidepath=yes}, or carrying \code{cycleway=track} /
+\verb{cycleway:*=track} -- is a \code{protected_lane} with
+\code{mapped_separately = TRUE}, so it lines up with a city inventory that
+files it under protected lanes rather than trails. With
+\code{sidepath_by_name = TRUE} (the default) a \code{highway=cycleway} whose
+\code{name} reads like a street ("14th Street", "Lawrence St") counts too,
+because mappers who draw a lane as its own way usually name it after
+the street, while trails are named as trails. It is a heuristic; turn
+it off where cycleways are routinely named after streets.
 \item Otherwise each side starts from \verb{cycleway=*}, is overridden by
 \verb{cycleway:both=*}, and then by \verb{cycleway:left=*} / \verb{cycleway:right=*}.
 \item A \code{painted_lane} side with a truthy \verb{cycleway[:side]:buffer} tag
