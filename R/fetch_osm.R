@@ -67,6 +67,11 @@
 #'   GeoPackages are kept. Defaults to an `extracts` folder under
 #'   [cl_cache_dir()], so a region is downloaded once per machine, not once
 #'   per session.
+#' @param date Fetch the network **as it was** on this date (a `Date` or
+#'   `"YYYY-MM-DD"`), using Overpass's attic data. Only the Overpass backend
+#'   has history; asking for a date with `backend = "extract"` is an error.
+#'   Attic queries are slower and heavier on the server, so use yearly
+#'   steps and `cache = TRUE`. Recorded in `attr(x, "cl_date")`.
 #' @param max_extract_mb Refuse to download an extract larger than this many
 #'   megabytes. The extract is chosen as the smallest Geofabrik region that
 #'   fully contains the clip boundary (or the bounding box when there is
@@ -92,8 +97,13 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
                          retries = 3, tile = NULL, cache = FALSE,
                          cache_dir = cl_cache_dir(), cache_max_age = 30,
                          backend = c("overpass", "extract"), extract_dir = NULL,
-                         max_extract_mb = 1000) {
+                         max_extract_mb = 1000, date = NULL) {
   backend <- match.arg(backend)
+  date <- .as_snapshot_date(date)
+  if (!is.null(date) && backend == "extract") {
+    rlang::abort(c("`date` needs the Overpass backend; extracts carry no history.",
+                   i = "Use backend = \"overpass\" for snapshots."))
+  }
   bb <- cl_bbox(place)
   boundary <- .resolve_clip(place, clip)
   if (!is.null(overpass_url)) {
@@ -108,7 +118,7 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
     rlang::abort("`tile` must be NULL or a single positive number of degrees.")
   }
 
-  key <- .overpass_cache_key(bb, tile, backend)
+  key <- .overpass_cache_key(bb, tile, backend, date)
   hit <- if (isTRUE(cache)) .cache_read(key, cache_dir, cache_max_age) else NULL
   if (!is.null(hit)) {
     rlang::inform(sprintf("Using cached %s result fetched %s.",
@@ -122,7 +132,7 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
     if (isTRUE(cache)) .cache_write(key, cache_dir, list(lines = lines, fetched = fetched, bbox = bb))
   } else {
     boxes <- .tile_bbox(bb, tile)
-    parts <- lapply(boxes, function(b) .overpass_lines(b, timeout, retries))
+    parts <- lapply(boxes, function(b) .overpass_lines(b, timeout, retries, date = date))
     lines <- .bind_osm_lines(parts)
     fetched <- Sys.time()
     if (isTRUE(cache)) .cache_write(key, cache_dir, list(lines = lines, fetched = fetched, bbox = bb))
@@ -140,7 +150,17 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   attr(lines, "cl_boundary") <- boundary
   attr(lines, "cl_fetched") <- fetched
   attr(lines, "cl_backend") <- backend
+  attr(lines, "cl_date") <- date
   lines
+}
+
+# NULL, or a single Date not in the future.
+.as_snapshot_date <- function(date) {
+  if (is.null(date)) return(NULL)
+  d <- tryCatch(as.Date(date), error = function(e) NA)
+  if (length(d) != 1L || is.na(d)) rlang::abort("`date` must be a single Date or \"YYYY-MM-DD\" string.")
+  if (d > Sys.Date()) rlang::abort("`date` is in the future.")
+  d
 }
 
 # Work out the clipping polygon (or NULL) from `place` and `clip`.
@@ -167,8 +187,13 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
 # Overpass query with retries --------------------------------------------------
 
 # One Overpass query for one bbox; NULL when it returned no lines.
-.overpass_lines <- function(bb, timeout, retries) {
-  q <- osmdata::opq(bbox = bb, timeout = timeout)
+.overpass_lines <- function(bb, timeout, retries, date = NULL) {
+  q <- if (is.null(date)) {
+    osmdata::opq(bbox = bb, timeout = timeout)
+  } else {
+    osmdata::opq(bbox = bb, timeout = timeout,
+                 datetime = format(as.POSIXct(date, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"))
+  }
   q <- osmdata::add_osm_features(q, features = .cl_osm_features)
   res <- .with_retries(function() .overpass_query(q), retries = retries)
   lines <- res$osm_lines
