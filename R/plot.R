@@ -57,7 +57,7 @@ cl_plot <- function(x, title = NULL, linewidth = 0.6,
     x$facility_type <- .facility_factor(x$facility_type)
     base$data <- x
     return(base +
-      ggplot2::geom_sf(ggplot2::aes(colour = .data$facility_type), linewidth = linewidth) +
+      ggplot2::geom_sf(ggplot2::aes(colour = .data$facility_type), linewidth = linewidth, key_glyph = "path") +
       ggplot2::scale_colour_manual(values = cl_palette(), drop = TRUE, name = "Facility"))
   }
   x$agreement <- factor(
@@ -66,7 +66,7 @@ cl_plot <- function(x, title = NULL, linewidth = 0.6,
   )
   base$data <- x
   base +
-    ggplot2::geom_sf(ggplot2::aes(colour = .data$agreement), linewidth = linewidth) +
+    ggplot2::geom_sf(ggplot2::aes(colour = .data$agreement), linewidth = linewidth, key_glyph = "path") +
     ggplot2::scale_colour_manual(
       values = c(`same type` = "#1a9850", `different type` = "#d73027", unmatched = "#bdbdbd"),
       drop = TRUE, name = "Agreement"
