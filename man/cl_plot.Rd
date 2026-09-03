@@ -8,7 +8,7 @@ cl_plot(
   x,
   title = NULL,
   linewidth = 0.6,
-  colour = c("facility_type", "type_match")
+  colour = c("facility_type", "type_match", "lts")
 )
 }
 \arguments{
@@ -19,8 +19,9 @@ cl_plot(
 \item{linewidth}{Line width passed to \code{\link[ggplot2:ggsf]{ggplot2::geom_sf()}}.}
 
 \item{colour}{Column to colour by: \code{"facility_type"} (default, using
-\code{\link[=cl_palette]{cl_palette()}}) or \code{"type_match"} from a \code{\link[=cl_compare]{cl_compare()}} layer, which
-draws agreeing segments green, disagreeing red, and unmatched grey.}
+\code{\link[=cl_palette]{cl_palette()}}); \code{"type_match"} from a \code{\link[=cl_compare]{cl_compare()}} layer, which
+draws agreeing segments green, disagreeing red, and unmatched grey; or
+\code{"lts"} from \code{\link[=cl_lts]{cl_lts()}}, green to red for stress levels 1 to 4.}
 }
 \value{
 A \code{ggplot} object.

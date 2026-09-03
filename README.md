@@ -86,7 +86,20 @@ has 62 km and OSM 5 km.
 # Official facilities that OSM does not know about
 missing <- dplyr::filter(cmp$official, matched_frac < 0.5)
 cl_plot(missing)
+
+# 4. How comfortable is it to ride? Level of Traffic Stress, 1 to 4, from
+#    the facility type and the parent road's speed limit and lane count
+stress <- cl_lts(denver)
+cl_summary(stress, by = "lts")
+cl_plot(stress, colour = "lts")
 ```
+
+`cl_lts()` follows the Mekuria, Furth and Nixon (2012) criteria as
+simplified in Furth's 2017 tables, on segments only (no intersection
+approaches or parking conflicts). Where a road has no `maxspeed` or
+`lanes` tag its class stands in, and `lts_basis` says so, so scores built
+on assumptions can be told from scores built on tags. The rule table is
+`inst/extdata/lts_rules.csv`.
 
 A bounding box works anywhere in the world and is the fastest way to
 iterate:

@@ -108,7 +108,24 @@ nrow(gaps)
 knitr::kable(sf::st_drop_geometry(gaps)[, c("name", "official_class", "status")])
 ```
 
-## 4. The same thing at city scale
+## 4. How stressful is it to ride?
+
+`cl_lts()` turns facility type plus the parent road's speed and lane
+count into a Level of Traffic Stress from 1 (almost anyone) to 4 (strong
+and fearless). Missing tags are filled from the road class and recorded
+in `lts_basis`.
+
+```{r}
+stress <- cl_lts(lanes)
+knitr::kable(cl_summary(stress, by = "lts"), digits = 2)
+head(table(stress$lts_basis), 6)
+```
+
+```{r, eval = has_ggplot2, fig.alt = "Map of downtown Denver bike facilities coloured by Level of Traffic Stress from green (1) to red (4)"}
+cl_plot(stress, colour = "lts", title = "Downtown Denver: Level of Traffic Stress")
+```
+
+## 5. The same thing at city scale
 
 Everything above works on a whole city; it just needs the network. A place
 name is geocoded, the Overpass box is clipped to the city's administrative
