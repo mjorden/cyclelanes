@@ -22,6 +22,8 @@ Works on either layer: the OpenStreetMap output of \code{\link[=cl_bike_lanes]{c
 the official output of \code{\link[=cl_fetch_official]{cl_fetch_official()}}.
 }
 \examples{
+cl_summary(cl_classify(denver_lodo$osm, drop_none = TRUE))
+cl_summary(denver_lodo$official, by = c("facility_type", "status"))
 \dontrun{
 cl_summary(cl_bike_lanes("Boulder, Colorado"))
 }

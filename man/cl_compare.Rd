@@ -47,13 +47,18 @@ step away in \code{\link[=cl_facility_levels]{cl_facility_levels()}} (painted vs
 which is often a tagging choice rather than a real difference.
 }
 \examples{
-\dontrun{
-osm <- cl_bike_lanes("Denver, Colorado")
-den <- cl_fetch_official("denver", bbox = attr(osm, "cl_boundary"))
-cmp <- cl_compare(osm, den)
+lanes <- cl_classify(denver_lodo$osm, drop_none = TRUE)
+cmp <- cl_compare(lanes, denver_lodo$official)
 cmp
 cmp$confusion
-cl_plot(cmp$official, colour = "type_match",
-        title = "Where the city and OSM disagree on the facility type")
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  cl_plot(cmp$official, colour = "type_match",
+          title = "Where the city and OSM disagree on the facility type")
+}
+\dontrun{
+# city-wide
+osm <- cl_bike_lanes("Denver, Colorado")
+den <- cl_fetch_official("denver", bbox = attr(osm, "cl_boundary"))
+cl_compare(osm, den)
 }
 }
