@@ -7,7 +7,8 @@ OpenStreetMap, normalises the dozen-odd OSM tagging conventions into one
 facility taxonomy with a per-side classification, and can run a city's
 official bike-facility inventory through the same taxonomy so the two can
 be summarised and compared. Denver, Colorado is the built-in worked
-example; other cities plug in through a source registry.
+example, Austin, Texas is registered too, and other cities plug in
+through a source registry.
 
 There is no Google Maps source, and there will not be one: Google exposes
 no bike-lane data endpoint and its terms forbid scraping the map layer.

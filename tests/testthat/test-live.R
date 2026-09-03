@@ -65,3 +65,15 @@ test_that("live: OSM and official layers compare", {
   expect_true(all(cmp$summary$matched_frac >= 0 & cmp$summary$matched_frac <= 1))
   expect_gt(cmp$summary$matched_frac[1], 0.2)
 })
+
+test_that("live: Austin official layer reads, sits in Austin, and has no unmapped classes", {
+  skip_unless_live("services.arcgis.com")
+  # a box over downtown Austin (Lady Bird Lake, Congress Ave)
+  austin_box <- c(-97.760, 30.255, -97.730, 30.275)
+  atx <- cl_fetch_official("austin", bbox = austin_box)
+  expect_gt(nrow(atx), 0)
+  expect_false(any(atx$facility_type == "none"))
+  bb <- sf::st_bbox(atx)
+  expect_true(bb[["xmin"]] > -98 && bb[["xmax"]] < -97 && bb[["ymin"]] > 30 && bb[["ymax"]] < 31)
+  expect_true(all(c("comfort", "line_type", "recommended_class") %in% names(atx)))
+})
