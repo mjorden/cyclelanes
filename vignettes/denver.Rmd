@@ -125,7 +125,54 @@ head(table(stress$lts_basis), 6)
 cl_plot(stress, colour = "lts", title = "Downtown Denver: Level of Traffic Stress")
 ```
 
-## 5. The same thing at city scale
+## 5. Reported crashes on those facilities
+
+The caveats come first, because they change what the numbers mean:
+
+* **These are reported crashes.** Police data miss roughly half of
+  bicycle injury crashes and almost all crashes with no motor vehicle
+  involved.
+* **Per kilometre-year is not per rider.** A busy protected lane carries
+  many times the riders of a quiet sharrow, so a raw per-kilometre rate
+  flatters low-use facilities. Give the facilities an `exposure` column
+  (daily bicycle volume) and `cl_crash_rates()` adds a per-bicycle-
+  kilometre rate; downtown Denver has no such counts here.
+* **Intersection crashes attach to whichever facility passes through the
+  intersection.** They are reported on their own rows and never merged
+  with mid-block crashes.
+* **The source is revised continuously.** `denver_lodo$crashes_fetched`
+  records when these were pulled.
+
+`denver_lodo$crashes` holds the bicycle-involved crashes the Denver
+Police layer reports in the box for `r paste(range(denver_lodo$crash_years), collapse = "-")`.
+
+```{r}
+crashes <- denver_lodo$crashes
+knitr::kable(cl_summary(crashes, by = c("severity", "location_type")))
+```
+
+`cl_crash_join()` snaps each crash to the nearest city facility within 25
+metres; `cl_crash_rates()` divides by kilometre-years, counting only the
+years after each segment's `install_year` where the city records one.
+
+```{r}
+j <- cl_crash_join(denver_lodo$official, crashes, tolerance = 25)
+j
+rates <- cl_crash_rates(j, years = denver_lodo$crash_years)
+knitr::kable(rates[, c("facility_type", "location_type", "length_km", "km_years",
+                       "n_crashes", "n_serious_fatal", "crashes_per_km_year")], digits = 2)
+```
+
+```{r, eval = has_ggplot2, fig.alt = "Map of the city's downtown facilities with reported bicycle crashes drawn as points sized by severity"}
+cl_plot(denver_lodo$official, crashes = crashes,
+        title = "City facilities and reported bicycle crashes, 2019-2025")
+```
+
+A dozen blocks of downtown is far too small an area to read a safety
+effect from; the point of the section is the shape of the analysis, and
+that the denominators are named in the column headers.
+
+## 6. The same thing at city scale
 
 Everything above works on a whole city; it just needs the network. A place
 name is geocoded, the Overpass box is clipped to the city's administrative

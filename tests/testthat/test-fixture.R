@@ -4,7 +4,11 @@
 
 test_that("the fixture has the documented shape", {
   expect_type(denver_lodo, "list")
-  expect_named(denver_lodo, c("osm", "official", "bbox", "fetched"))
+  expect_named(denver_lodo, c("osm", "official", "bbox", "fetched", "crashes", "crash_years", "crashes_fetched"))
+  expect_s3_class(denver_lodo$crashes, "sf")
+  expect_true(all(sf::st_geometry_type(denver_lodo$crashes) == "POINT"))
+  expect_true(all(denver_lodo$crashes$bicycle))
+  expect_true(all(denver_lodo$crashes$year %in% denver_lodo$crash_years))
   expect_s3_class(denver_lodo$osm, "sf")
   expect_s3_class(denver_lodo$official, "sf")
   expect_s3_class(denver_lodo$fetched, "Date")
@@ -51,4 +55,14 @@ test_that("comparing the two fixture layers runs and is stable", {
   for (col in c("matched_frac", "type_agreement", "type_adjacent")) s[[col]] <- round(s[[col]], 3)
   expect_snapshot_value(s, style = "json2")
   expect_gt(cmp$summary$matched_frac[2], 0.5)
+})
+
+test_that("the fixture crashes join to the official layer and give rates", {
+  j <- cl_crash_join(denver_lodo$official, denver_lodo$crashes, tolerance = 25)
+  expect_s3_class(j, "cl_crash_join")
+  expect_gt(sum(!is.na(j$crashes$facility_row)), 0)
+  r <- cl_crash_rates(j, years = denver_lodo$crash_years)
+  expect_true(all(c("intersection", "mid_block") %in% r$location_type))
+  expect_true(all(r$km_years[r$facility_type != "none"] > 0))
+  expect_equal(sum(r$n_crashes), nrow(denver_lodo$crashes))
 })
