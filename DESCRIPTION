@@ -31,8 +31,12 @@ Imports:
     utils
 Suggests:
     ggplot2,
+    htmltools,
+    igraph,
     knitr,
+    leaflet,
     osmextract,
+    sfnetworks,
     rmarkdown,
     testthat (>= 3.0.0),
     withr

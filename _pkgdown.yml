@@ -35,9 +35,12 @@ reference:
   - cl_compare
   - cl_lts
   - cl_lts_palette
-- title: Plot
+  - cl_as_sfnetwork
+  - cl_components
+- title: Plot and map
   contents:
   - cl_plot
+  - cl_map
   - cl_palette
 - title: Data
   contents:

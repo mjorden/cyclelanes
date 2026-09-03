@@ -27,10 +27,14 @@ cl_palette <- function() {
 #' @param x An `sf` with a `facility_type` column.
 #' @param title Optional plot title.
 #' @param linewidth Line width passed to [ggplot2::geom_sf()].
+#' @param n_components How many components to colour when
+#'   `colour = "component"`.
 #' @param colour Column to colour by: `"facility_type"` (default, using
 #'   [cl_palette()]); `"type_match"` from a [cl_compare()] layer, which
 #'   draws agreeing segments green, disagreeing red, and unmatched grey; or
-#'   `"lts"` from [cl_lts()], green to red for stress levels 1 to 4.
+#'   `"lts"` from [cl_lts()], green to red for stress levels 1 to 4; or
+#'   `"component"` from [cl_components()], the largest `n_components`
+#'   coloured and the rest grey.
 #' @return A `ggplot` object.
 #' @examples
 #' if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -41,14 +45,16 @@ cl_palette <- function() {
 #' }
 #' @export
 cl_plot <- function(x, title = NULL, linewidth = 0.6,
-                    colour = c("facility_type", "type_match", "lts")) {
+                    colour = c("facility_type", "type_match", "lts", "component"),
+                    n_components = 8) {
   rlang::check_installed("ggplot2", reason = "for cl_plot()")
   .stop_if_not_sf(x)
   colour <- match.arg(colour)
   if (!colour %in% names(x)) {
     rlang::abort(sprintf("`x` has no `%s` column; %s first.", colour,
                          switch(colour, facility_type = "classify it",
-                                type_match = "run cl_compare()", lts = "run cl_lts()")))
+                                type_match = "run cl_compare()", lts = "run cl_lts()",
+                                component = "run cl_components()")))
   }
   base <- ggplot2::ggplot(x) +
     ggplot2::labs(title = title) +
@@ -61,6 +67,17 @@ cl_plot <- function(x, title = NULL, linewidth = 0.6,
     return(base +
       ggplot2::geom_sf(ggplot2::aes(colour = .data$facility_type), linewidth = linewidth, key_glyph = "path") +
       ggplot2::scale_colour_manual(values = cl_palette(), drop = TRUE, name = "Facility"))
+  }
+  if (colour == "component") {
+    top <- seq_len(min(n_components, max(x$component, na.rm = TRUE)))
+    x$component_group <- factor(ifelse(x$component %in% top, as.character(x$component), "other"),
+                                levels = c(as.character(top), "other"))
+    pal <- c(grDevices::hcl.colors(length(top), "Dark 3"), "#d9d9d9")
+    names(pal) <- levels(x$component_group)
+    base$data <- x
+    return(base +
+      ggplot2::geom_sf(ggplot2::aes(colour = .data$component_group), linewidth = linewidth, key_glyph = "path") +
+      ggplot2::scale_colour_manual(values = pal, drop = FALSE, name = "Component"))
   }
   if (colour == "lts") {
     x$lts <- factor(as.character(x$lts), levels = c("1", "2", "3", "4"))

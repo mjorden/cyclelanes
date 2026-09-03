@@ -8,7 +8,8 @@ cl_plot(
   x,
   title = NULL,
   linewidth = 0.6,
-  colour = c("facility_type", "type_match", "lts")
+  colour = c("facility_type", "type_match", "lts", "component"),
+  n_components = 8
 )
 }
 \arguments{
@@ -21,7 +22,12 @@ cl_plot(
 \item{colour}{Column to colour by: \code{"facility_type"} (default, using
 \code{\link[=cl_palette]{cl_palette()}}); \code{"type_match"} from a \code{\link[=cl_compare]{cl_compare()}} layer, which
 draws agreeing segments green, disagreeing red, and unmatched grey; or
-\code{"lts"} from \code{\link[=cl_lts]{cl_lts()}}, green to red for stress levels 1 to 4.}
+\code{"lts"} from \code{\link[=cl_lts]{cl_lts()}}, green to red for stress levels 1 to 4; or
+\code{"component"} from \code{\link[=cl_components]{cl_components()}}, the largest \code{n_components}
+coloured and the rest grey.}
+
+\item{n_components}{How many components to colour when
+\code{colour = "component"}.}
 }
 \value{
 A \code{ggplot} object.
