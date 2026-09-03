@@ -1,0 +1,34 @@
+Package: cyclelanes
+Title: Fetch and Classify Bicycle Infrastructure from OpenStreetMap and City Open Data
+Version: 0.1.0
+Authors@R:
+    person("Matthew", "Jorden", email = "matthew.jorden@gmail.com", role = c("aut", "cre"))
+Description: Pulls bicycle infrastructure for any place from OpenStreetMap via
+    the Overpass API, normalises the dozen-odd OSM tagging conventions
+    (cycleway=*, cycleway:left/right/both, highway=cycleway, bicycle_road,
+    buffers, contraflow) into one tidy facility taxonomy with per-side
+    classification, and returns an 'sf' object ready for mapping and network
+    analysis. A pluggable registry of municipal open-data sources lets the same
+    taxonomy be applied to a city's official bike-facility layer so the two can
+    be summarised and compared. Ships with Denver, Colorado as the worked
+    example.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.1)
+Imports:
+    sf (>= 1.0.0),
+    osmdata (>= 0.2.0),
+    dplyr (>= 1.1.0),
+    rlang,
+    units,
+    utils
+Suggests:
+    ggplot2,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+URL: https://github.com/mjorden/cyclelanes
+BugReports: https://github.com/mjorden/cyclelanes/issues

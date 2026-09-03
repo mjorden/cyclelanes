@@ -1,0 +1,202 @@
+#' The cyclelanes facility taxonomy
+#'
+#' Every facility in the package -- whether it came from OpenStreetMap or a
+#' city's official inventory -- is classified into one of these levels,
+#' ordered from most to least physically separated from motor traffic:
+#'
+#' | level | meaning | typical OSM tagging |
+#' |---|---|---|
+#' | `separated_path` | off-street path or trail | `highway=cycleway`; `highway=path` + `bicycle=designated` |
+#' | `protected_lane` | on-street, physically separated (curb, bollards, parking) | `cycleway=track` |
+#' | `buffered_lane` | painted lane with a painted buffer | `cycleway=lane` + `cycleway:buffer=*` |
+#' | `painted_lane` | painted lane, no buffer | `cycleway=lane` |
+#' | `neighborhood_bikeway` | low-traffic street designated for bikes | `bicycle_road=yes`, `cyclestreet=yes` |
+#' | `bus_bike_lane` | shared bus and bike lane | `cycleway=share_busway` |
+#' | `shared_lane` | sharrows / shared general-traffic lane | `cycleway=shared_lane` |
+#' | `shoulder` | rideable paved shoulder | `cycleway=shoulder` |
+#' | `none` | no facility | `cycleway=no`, unrecognised, or absent |
+#'
+#' @return A character vector of level names in protection order.
+#' @export
+cl_facility_levels <- function() {
+  c("separated_path", "protected_lane", "buffered_lane", "painted_lane",
+    "neighborhood_bikeway", "bus_bike_lane", "shared_lane", "shoulder", "none")
+}
+
+.facility_factor <- function(x) {
+  factor(as.character(x), levels = cl_facility_levels())
+}
+
+# Map a cycleway=* value to a facility level. NA in -> NA out (tag absent).
+# Any recognised value maps; anything unrecognised is treated as no facility.
+.map_cycleway <- function(value) {
+  v <- .norm_tag(value)
+  lut <- c(
+    track = "protected_lane",
+    opposite_track = "protected_lane",
+    lane = "painted_lane",
+    opposite_lane = "painted_lane",
+    yes = "painted_lane",
+    shared_lane = "shared_lane",
+    shared = "shared_lane",
+    sharrow = "shared_lane",
+    opposite = "shared_lane",
+    share_busway = "bus_bike_lane",
+    shared_busway = "bus_bike_lane",
+    opposite_share_busway = "bus_bike_lane",
+    shoulder = "shoulder",
+    no = "none",
+    none = "none",
+    separate = "none",
+    sidepath = "none",
+    crossing = "none",
+    link = "none"
+  )
+  out <- rep(NA_character_, length(v))
+  known <- !is.na(v) & v %in% names(lut)
+  out[known] <- unname(lut[v[known]])
+  out[!is.na(v) & !known] <- "none"
+  out
+}
+
+.contraflow_values <- c("opposite", "opposite_lane", "opposite_track",
+                        "opposite_share_busway")
+
+.classify_tag_cols <- c(
+  "osm_id", "name", "highway",
+  "cycleway", "cycleway:left", "cycleway:right", "cycleway:both",
+  "cycleway:buffer", "cycleway:left:buffer", "cycleway:right:buffer",
+  "cycleway:both:buffer",
+  "bicycle", "bicycle_road", "cyclestreet", "foot", "segregated",
+  "oneway", "surface"
+)
+
+.classify_out_cols <- c(
+  "osm_id", "name", "highway",
+  "facility_type", "facility_left", "facility_right", "n_sides",
+  "contraflow", "shared_with_pedestrians", "oneway", "surface", "length_m"
+)
+
+#' Classify OpenStreetMap ways into the facility taxonomy
+#'
+#' Normalises the OSM bicycle tagging on each way into the levels of
+#' [cl_facility_levels()], resolving the per-side tags so that each street
+#' gets a left, a right, and an overall classification.
+#'
+#' The rules, in order:
+#'
+#' 1. `highway=cycleway`, or `highway=path/footway/pedestrian/track/bridleway`
+#'    with `bicycle=designated`, is a `separated_path` for the whole way.
+#'    Side columns are `NA` for these.
+#' 2. Otherwise each side starts from `cycleway=*`, is overridden by
+#'    `cycleway:both=*`, and then by `cycleway:left=*` / `cycleway:right=*`.
+#' 3. A `painted_lane` side with a truthy `cycleway[:side]:buffer` tag
+#'    becomes `buffered_lane`.
+#' 4. `bicycle_road=yes` or `cyclestreet=yes` makes any side that has no
+#'    other facility a `neighborhood_bikeway`.
+#' 5. `facility_type` is the more protected of the two sides.
+#'
+#' `cycleway=separate` / `sidepath` (the facility is mapped as its own way)
+#' and `cycleway=no` both yield `none`, so nothing is double-counted.
+#'
+#' @param x An `sf` object from [cl_fetch_osm()], or any `sf` of ways with
+#'   OSM-style tag columns. Missing tag columns are treated as absent tags.
+#' @param drop_none Drop ways whose overall `facility_type` is `none`.
+#' @param keep_tags Keep every input column in addition to the standard
+#'   output columns. By default only `osm_id`, `name`, `highway`, `oneway`
+#'   and `surface` survive from the input.
+#' @return An `sf` with columns `osm_id`, `name`, `highway`, `facility_type`,
+#'   `facility_left`, `facility_right` (factors over [cl_facility_levels()]),
+#'   `n_sides` (0-2, `NA` for separated paths), `contraflow`,
+#'   `shared_with_pedestrians`, `oneway`, `surface`, `length_m`, and geometry.
+#' @examples
+#' ways <- sf::st_sf(
+#'   highway = c("residential", "cycleway", "primary"),
+#'   cycleway = c("lane", NA, "no"),
+#'   `cycleway:right:buffer` = c("yes", NA, NA),
+#'   geometry = sf::st_sfc(
+#'     sf::st_linestring(rbind(c(-105, 39.7), c(-104.999, 39.7))),
+#'     sf::st_linestring(rbind(c(-105, 39.71), c(-104.999, 39.71))),
+#'     sf::st_linestring(rbind(c(-105, 39.72), c(-104.999, 39.72))),
+#'     crs = 4326
+#'   ),
+#'   check.names = FALSE
+#' )
+#' cl_classify(ways)[, c("facility_type", "facility_left", "facility_right")]
+#' @export
+cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE) {
+  .stop_if_not_sf(x)
+  geom_col <- attr(x, "sf_column")
+  x <- .ensure_cols(x, .classify_tag_cols)
+
+  hw <- .norm_tag(x$highway)
+  bicycle <- .norm_tag(x$bicycle)
+
+  # 1. whole-way separated paths
+  is_path <- hw %in% "cycleway" |
+    (hw %in% c("path", "footway", "pedestrian", "track", "bridleway") &
+       bicycle %in% "designated")
+
+  # 2. per-side resolution
+  base  <- .map_cycleway(x$cycleway)
+  both  <- .map_cycleway(x[["cycleway:both"]])
+  left  <- .map_cycleway(x[["cycleway:left"]])
+  right <- .map_cycleway(x[["cycleway:right"]])
+  fl <- dplyr::coalesce(left, both, base)
+  fr <- dplyr::coalesce(right, both, base)
+
+  # 3. buffers
+  buf_base <- .tag_truthy(x[["cycleway:buffer"]]) | .tag_truthy(x[["cycleway:both:buffer"]])
+  buf_l <- .tag_truthy(x[["cycleway:left:buffer"]]) | buf_base
+  buf_r <- .tag_truthy(x[["cycleway:right:buffer"]]) | buf_base
+  fl[fl %in% "painted_lane" & buf_l] <- "buffered_lane"
+  fr[fr %in% "painted_lane" & buf_r] <- "buffered_lane"
+
+  # 4. neighbourhood bikeways fill sides with nothing better
+  is_bikeway <- .tag_truthy(x$bicycle_road) | .tag_truthy(x$cyclestreet)
+  fl[(is.na(fl) | fl %in% "none") & is_bikeway] <- "neighborhood_bikeway"
+  fr[(is.na(fr) | fr %in% "none") & is_bikeway] <- "neighborhood_bikeway"
+  fl[is.na(fl)] <- "none"
+  fr[is.na(fr)] <- "none"
+
+  # 5. overall = more protected side; paths override
+  lv <- cl_facility_levels()
+  overall <- lv[pmin(match(fl, lv), match(fr, lv))]
+  overall[is_path] <- "separated_path"
+  fl[is_path] <- NA_character_
+  fr[is_path] <- NA_character_
+
+  n_sides <- as.integer(!fl %in% c("none", NA)) + as.integer(!fr %in% c("none", NA))
+  n_sides[is_path] <- NA_integer_
+
+  contraflow <- .norm_tag(x$cycleway) %in% .contraflow_values |
+    .norm_tag(x[["cycleway:left"]]) %in% .contraflow_values |
+    .norm_tag(x[["cycleway:right"]]) %in% .contraflow_values |
+    .norm_tag(x[["cycleway:both"]]) %in% .contraflow_values
+
+  shared_peds <- is_path & (
+    .norm_tag(x$foot) %in% c("designated", "yes") |
+      .norm_tag(x$segregated) %in% "no" |
+      hw %in% c("path", "footway", "pedestrian")
+  )
+
+  out <- x
+  out$facility_type <- .facility_factor(overall)
+  out$facility_left <- .facility_factor(fl)
+  out$facility_right <- .facility_factor(fr)
+  out$n_sides <- n_sides
+  out$contraflow <- contraflow
+  out$shared_with_pedestrians <- shared_peds
+  out$length_m <- .length_m(out)
+
+  keep <- .classify_out_cols
+  if (keep_tags) {
+    keep <- c(keep, setdiff(names(x), c(keep, geom_col)))
+  }
+  out <- out[, keep]
+  if (drop_none) {
+    out <- out[out$facility_type != "none", ]
+  }
+  rownames(out) <- NULL
+  out
+}
