@@ -13,7 +13,9 @@ cl_fetch_osm(
   tile = NULL,
   cache = FALSE,
   cache_dir = cl_cache_dir(),
-  cache_max_age = 30
+  cache_max_age = 30,
+  backend = c("overpass", "extract"),
+  extract_dir = NULL
 )
 }
 \arguments{
@@ -60,6 +62,19 @@ for the same bounding box within \code{cache_max_age} days.}
 \item{cache_dir}{Directory for cached results; see \code{\link[=cl_cache_dir]{cl_cache_dir()}}.}
 
 \item{cache_max_age}{Maximum age in days of a cached result to reuse.}
+
+\item{backend}{\code{"overpass"} (default) queries the Overpass API for the
+bounding box. \code{"extract"} downloads the smallest Geofabrik extract
+covering the box through the \code{osmextract} package, converts it once,
+and reads the ways from there: no Overpass request at all, so no rate
+limit, and the second place in the same region is instant. The first
+download of a US state is 50-300 MB and the conversion takes a few
+minutes; extracts lag OSM by about a day. Right for a city or a batch
+of cities; Overpass is right for a neighbourhood.}
+
+\item{extract_dir}{Where \code{osmextract} keeps downloaded extracts. Defaults
+to \code{\link[osmextract:oe_download_directory]{osmextract::oe_download_directory()}}, which honours the
+\code{OSMEXT_DOWNLOAD_DIRECTORY} environment variable.}
 }
 \value{
 An \code{sf} object of \code{LINESTRING}s in WGS84 (EPSG:4326) with the raw

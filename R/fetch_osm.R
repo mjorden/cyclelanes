@@ -55,6 +55,17 @@
 #'   for the same bounding box within `cache_max_age` days.
 #' @param cache_dir Directory for cached results; see [cl_cache_dir()].
 #' @param cache_max_age Maximum age in days of a cached result to reuse.
+#' @param backend `"overpass"` (default) queries the Overpass API for the
+#'   bounding box. `"extract"` downloads the smallest Geofabrik extract
+#'   covering the box through the `osmextract` package, converts it once,
+#'   and reads the ways from there: no Overpass request at all, so no rate
+#'   limit, and the second place in the same region is instant. The first
+#'   download of a US state is 50-300 MB and the conversion takes a few
+#'   minutes; extracts lag OSM by about a day. Right for a city or a batch
+#'   of cities; Overpass is right for a neighbourhood.
+#' @param extract_dir Where `osmextract` keeps downloaded extracts. Defaults
+#'   to [osmextract::oe_download_directory()], which honours the
+#'   `OSMEXT_DOWNLOAD_DIRECTORY` environment variable.
 #' @return An `sf` object of `LINESTRING`s in WGS84 (EPSG:4326) with the raw
 #'   OSM tag columns present in the area. A zero-row `sf` if nothing matched.
 #'   The WGS84 bounding box queried is stored in `attr(x, "cl_bbox")`, the
@@ -72,7 +83,9 @@
 #' @export
 cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
                          retries = 3, tile = NULL, cache = FALSE,
-                         cache_dir = cl_cache_dir(), cache_max_age = 30) {
+                         cache_dir = cl_cache_dir(), cache_max_age = 30,
+                         backend = c("overpass", "extract"), extract_dir = NULL) {
+  backend <- match.arg(backend)
   bb <- cl_bbox(place)
   boundary <- .resolve_clip(place, clip)
   if (!is.null(overpass_url)) {
@@ -87,12 +100,18 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
     rlang::abort("`tile` must be NULL or a single positive number of degrees.")
   }
 
-  key <- .overpass_cache_key(bb, tile)
+  key <- .overpass_cache_key(bb, tile, backend)
   hit <- if (isTRUE(cache)) .cache_read(key, cache_dir, cache_max_age) else NULL
   if (!is.null(hit)) {
-    rlang::inform(sprintf("Using cached Overpass result fetched %s.", format(hit$fetched, "%Y-%m-%d %H:%M")))
+    rlang::inform(sprintf("Using cached %s result fetched %s.",
+                          if (backend == "extract") "extract" else "Overpass",
+                          format(hit$fetched, "%Y-%m-%d %H:%M")))
     lines <- hit$lines
     fetched <- hit$fetched
+  } else if (backend == "extract") {
+    lines <- .extract_lines(bb, extract_dir)
+    fetched <- Sys.time()
+    if (isTRUE(cache)) .cache_write(key, cache_dir, list(lines = lines, fetched = fetched, bbox = bb))
   } else {
     boxes <- .tile_bbox(bb, tile)
     parts <- lapply(boxes, function(b) .overpass_lines(b, timeout, retries))
@@ -112,6 +131,7 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   attr(lines, "cl_bbox") <- bb
   attr(lines, "cl_boundary") <- boundary
   attr(lines, "cl_fetched") <- fetched
+  attr(lines, "cl_backend") <- backend
   lines
 }
 
@@ -222,4 +242,52 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   out <- sf::st_as_sf(out)
   if ("osm_id" %in% names(out)) out <- out[!duplicated(out$osm_id), ]
   out
+}
+
+# Extract backend --------------------------------------------------------------
+
+# Every tag cl_classify() reads, plus the ones the Overpass filter keys on,
+# requested as columns from the extract's lines layer.
+.cl_extract_tags <- c(
+  "name", "cycleway", "cycleway:left", "cycleway:right", "cycleway:both",
+  "cycleway:buffer", "cycleway:left:buffer", "cycleway:right:buffer",
+  "cycleway:both:buffer", "bicycle", "bicycle_road", "cyclestreet", "foot",
+  "footway", "segregated", "is_sidepath", "oneway", "surface", "lit", "width"
+)
+
+# Bicycle-relevant ways from a Geofabrik extract covering `bb`, in the same
+# shape as an Overpass result (osm_id, highway, tag columns, geometry).
+.extract_lines <- function(bb, extract_dir = NULL) {
+  rlang::check_installed("osmextract", reason = "for backend = \"extract\"")
+  poly <- sf::st_as_sfc(sf::st_bbox(
+    c(xmin = bb[["xmin"]], ymin = bb[["ymin"]], xmax = bb[["xmax"]], ymax = bb[["ymax"]]),
+    crs = sf::st_crs(4326)))
+  raw <- .extract_query(poly, extract_dir)
+  if (is.null(raw) || nrow(raw) == 0L) return(.empty_osm_sf())
+  raw <- .ensure_cols(raw, c("osm_id", "highway", .cl_extract_tags))
+  keep <- !is.na(raw$highway) & (
+    .norm_tag(raw$highway) %in% "cycleway" |
+      !is.na(raw$cycleway) | !is.na(raw[["cycleway:left"]]) |
+      !is.na(raw[["cycleway:right"]]) | !is.na(raw[["cycleway:both"]]) |
+      .norm_tag(raw$bicycle) %in% "designated" |
+      .tag_truthy(raw$bicycle_road) | .tag_truthy(raw$cyclestreet)
+  )
+  out <- raw[keep, ]
+  out <- out[, setdiff(names(out), c("z_order", "other_tags"))]
+  out$osm_id <- as.character(out$osm_id)
+  out <- sf::st_transform(out, 4326)
+  rownames(out) <- NULL
+  out
+}
+
+# The actual osmextract call. Mocked in tests.
+.extract_query <- function(poly, extract_dir = NULL) {
+  args <- list(
+    place = poly, layer = "lines", provider = "geofabrik",
+    extra_tags = .cl_extract_tags,
+    boundary = poly, boundary_type = "clipsrc",
+    max_file_size = Inf, quiet = TRUE
+  )
+  if (!is.null(extract_dir)) args$download_directory <- extract_dir
+  do.call(osmextract::oe_get, args)
 }
