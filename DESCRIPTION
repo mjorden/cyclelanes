@@ -25,6 +25,7 @@ Imports:
     rlang,
     units,
     jsonlite,
+    stats,
     utils
 Suggests:
     ggplot2,

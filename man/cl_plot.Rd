@@ -4,7 +4,12 @@
 \alias{cl_plot}
 \title{Quick map of classified bike lanes}
 \usage{
-cl_plot(x, title = NULL, linewidth = 0.6)
+cl_plot(
+  x,
+  title = NULL,
+  linewidth = 0.6,
+  colour = c("facility_type", "type_match")
+)
 }
 \arguments{
 \item{x}{An \code{sf} with a \code{facility_type} column.}
@@ -12,6 +17,10 @@ cl_plot(x, title = NULL, linewidth = 0.6)
 \item{title}{Optional plot title.}
 
 \item{linewidth}{Line width passed to \code{\link[ggplot2:ggsf]{ggplot2::geom_sf()}}.}
+
+\item{colour}{Column to colour by: \code{"facility_type"} (default, using
+\code{\link[=cl_palette]{cl_palette()}}) or \code{"type_match"} from a \code{\link[=cl_compare]{cl_compare()}} layer, which
+draws agreeing segments green, disagreeing red, and unmatched grey.}
 }
 \value{
 A \code{ggplot} object.

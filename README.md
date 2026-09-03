@@ -135,9 +135,12 @@ the built-in registry are welcome.
   carries both existing and future bikeways. `existing_only = TRUE` (the
   default) keeps segments with an existing facility type; the proposed
   type is still available in the `proposed_class` column.
-- **Type agreement is not checked.** `cl_compare()` measures whether both
-  sources have *a* facility within the tolerance, not that they agree on
-  which kind.
+- **Type agreement is length-weighted and spatial.** `cl_compare()`
+  assigns each segment the other layer's type that covers most of it
+  within the tolerance. Where two facilities run side by side (a trail
+  beside a painted lane) the nearer one wins, and adjacent levels such as
+  painted vs buffered lane are reported separately because that
+  distinction is often a tagging choice.
 - **Overpass and Nominatim are shared public services.** A whole metro
   area is fine; a state is not. Cache results rather than re-fetching in a
   loop, and respect the Nominatim usage policy for geocoding. If the
