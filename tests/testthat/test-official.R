@@ -131,3 +131,27 @@ test_that("Austin is registered and its crosswalk covers every published class",
   expect_true(all(cw %in% cl_facility_levels()))
   expect_equal(unname(cw["Bike Lane - Protected Two-Way"]), "protected_lane")
 })
+
+test_that("Seattle and Boulder are registered and their crosswalks cover every live class", {
+  s <- cl_sources()
+  expect_true(all(c("seattle", "boulder") %in% s$city))
+
+  # CATEGORY values from cl_check_source("seattle"), 2026-09-03
+  seattle <- c("BKF-SHW", "BKF-BL", "BKF-NGW", "BKF-PBL", "BKF-OFFST", "BKF-BBL", "BKF-CLMB")
+  expect_setequal(names(cyclelanes:::.seattle_crosswalk), seattle)
+  expect_true(all(cyclelanes:::.seattle_crosswalk %in% cl_facility_levels()))
+
+  # FACILITYTYPE values from cl_check_source("boulder"), 2026-09-03
+  boulder <- c("Connector - On Street", "Separated Bike Lane", "Residential Street",
+               "Crossing Other", "Crossing Marked", "Designated Bike Route",
+               "On-Street Bike Lane", "Bikeable Shoulder", "Connector",
+               "Crossing Enhanced - Type A", "Crossing Enhanced - Type B",
+               "Protected Bike Lane", "Crossing Enhanced - Type D",
+               "Crossing Enhanced - Type E", "Contra Flow Bike Lane",
+               "Crossing Enhanced - Type C")
+  expect_setequal(names(cyclelanes:::.boulder_crosswalk), boulder)
+  expect_true(all(cyclelanes:::.boulder_crosswalk %in% cl_facility_levels()))
+  cw <- cyclelanes:::.boulder_crosswalk
+  expect_true(all(cw[grepl("^Crossing", names(cw))] == "none"))
+  expect_true(all(cw[!grepl("^Crossing", names(cw))] != "none"))
+})

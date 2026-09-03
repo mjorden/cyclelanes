@@ -40,6 +40,40 @@
   "Wide Shoulder"                 = "shoulder"
 )
 
+# Seattle's SDOT Existing Bike Facilities CATEGORY codes.
+.seattle_crosswalk <- c(
+  "BKF-PBL"   = "protected_lane",       # protected bike lane
+  "BKF-BBL"   = "buffered_lane",        # buffered bike lane
+  "BKF-BL"    = "painted_lane",         # bike lane
+  "BKF-CLMB"  = "painted_lane",         # climbing lane (uphill side only)
+  "BKF-NGW"   = "neighborhood_bikeway", # neighborhood greenway
+  "BKF-SHW"   = "shared_lane",          # sharrows / shared roadway markings
+  "BKF-OFFST" = "separated_path"        # miscellaneous off-street facility
+)
+
+# Boulder's on-street bike & pedestrian network FACILITYTYPE values. Crossings
+# are intersection treatments, not facilities; "Residential Street" is the
+# low-traffic network the city routes bikes along; "Designated Bike Route" is
+# a signed route on a shared street.
+.boulder_crosswalk <- c(
+  "Protected Bike Lane"        = "protected_lane",
+  "Separated Bike Lane"        = "protected_lane",
+  "On-Street Bike Lane"        = "painted_lane",
+  "Contra Flow Bike Lane"      = "painted_lane",
+  "Bikeable Shoulder"          = "shoulder",
+  "Residential Street"         = "neighborhood_bikeway",
+  "Designated Bike Route"      = "shared_lane",
+  "Connector"                  = "shared_use_path",
+  "Connector - On Street"      = "shared_lane",
+  "Crossing Marked"            = "none",
+  "Crossing Other"             = "none",
+  "Crossing Enhanced - Type A" = "none",
+  "Crossing Enhanced - Type B" = "none",
+  "Crossing Enhanced - Type C" = "none",
+  "Crossing Enhanced - Type D" = "none",
+  "Crossing Enhanced - Type E" = "none"
+)
+
 .builtin_sources <- function() {
   list(
     austin = list(
@@ -63,6 +97,26 @@
                           "Bicycle Facilities (TRANSPORTATION_bicycle_facilities),",
                           "via the City of Austin Open Data Portal."),
       homepage = "https://data.austintexas.gov/"
+    ),
+    boulder = list(
+      city = "boulder",
+      label = "Boulder, Colorado",
+      type = "arcgis",
+      # City of Boulder's own ArcGIS Server: a MapServer layer capped at
+      # 1000 features per page, in Colorado North state plane feet.
+      url = paste0("https://gis.bouldercolorado.gov/ags_svr3/rest/services/trans/",
+                   "BikePedOnStreetOpenData/MapServer/0"),
+      id_field = "FACILITYID",
+      name_field = "STREETNAME",
+      class_field = "FACILITYTYPE",
+      extra_fields = c(street_class = "STREETCLASS", buffered = "BUFFERED",
+                       buffer_type = "BUFFERTYPE", oneway = "ONEWAY", owner = "OWNEDBY"),
+      existing_where = "LIFECYCLE = 'Active'",
+      existing_filter = NULL,
+      crosswalk = .boulder_crosswalk,
+      attribution = paste("City of Boulder, Bike and Pedestrian On-Street Network",
+                          "(BikePedOnStreetOpenData), via Boulder Open Data."),
+      homepage = "https://open-data.bouldercolorado.gov/"
     ),
     denver = list(
       city = "denver",
@@ -90,6 +144,27 @@
                           "bikeway inventory (Denver_Bicycle_Facilities_ODC),",
                           "via the Denver Open Data Catalog."),
       homepage = "https://opendata-geospatialdenver.hub.arcgis.com/"
+    ),
+    seattle = list(
+      city = "seattle",
+      label = "Seattle, Washington",
+      type = "arcgis",
+      # SDOT's Existing Bike Facilities layer. Multi-use trails are a separate
+      # layer (1) of the same service and are not included here.
+      url = paste0("https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/",
+                   "SDOT_Bike_Facilities/FeatureServer/2"),
+      id_field = "UNITID",
+      name_field = "UNITDESC",
+      class_field = "CATEGORY",
+      extra_fields = c(status = "CURRENT_STATUS", direction = "MODEL_TYPE",
+                       separation = "STYLE", install_date = "INSTALL_DATE"),
+      # in service or awaiting reconstruction; not the ones under construction
+      existing_where = "CURRENT_STATUS <> 'UNDERCONS'",
+      existing_filter = NULL,
+      crosswalk = .seattle_crosswalk,
+      attribution = paste("Seattle Department of Transportation, Existing Bike",
+                          "Facilities (SDOT_Bike_Facilities), via Seattle Open Data."),
+      homepage = "https://data-seattlecitygis.opendata.arcgis.com/"
     )
   )
 }

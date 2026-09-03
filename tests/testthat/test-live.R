@@ -90,3 +90,19 @@ test_that("live: the extract backend reads a small region without Overpass", {
   lanes <- cl_classify(x, drop_none = TRUE)
   expect_true(any(lanes$facility_type %in% c("protected_lane", "painted_lane", "separated_path")))
 })
+
+test_that("live: Seattle and Boulder layers read, sit in the right city, and have no unmapped classes", {
+  skip_unless_live("services.arcgis.com")
+  sea <- cl_fetch_official("seattle", bbox = c(-122.35, 47.60, -122.32, 47.62))
+  expect_gt(nrow(sea), 0)
+  expect_false(any(sea$facility_type == "none"))
+  bb <- sf::st_bbox(sea)
+  expect_true(bb[["xmin"]] > -122.5 && bb[["xmax"]] < -122.2 && bb[["ymin"]] > 47.5 && bb[["ymax"]] < 47.75)
+
+  # Boulder is a MapServer capped at 1000 rows per page
+  bou <- cl_fetch_official("boulder", bbox = c(-105.29, 40.01, -105.26, 40.03))
+  expect_gt(nrow(bou), 0)
+  bb <- sf::st_bbox(bou)
+  expect_true(bb[["xmin"]] > -105.4 && bb[["xmax"]] < -105.1 && bb[["ymin"]] > 39.9 && bb[["ymax"]] < 40.1)
+  expect_true(all(c("street_class", "buffered") %in% names(bou)))
+})
