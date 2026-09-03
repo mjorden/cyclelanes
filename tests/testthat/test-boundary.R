@@ -120,3 +120,18 @@ test_that("cl_fetch_official clips to a polygon bbox", {
   expect_s3_class(attr(clipped, "cl_boundary"), "sf")
   expect_null(attr(whole, "cl_boundary"))
 })
+
+test_that(".clip_lines survives ways that only touch the boundary at a point", {
+  # the way ends exactly on the western edge of the box: intersection is a POINT
+  b <- square(-105.0000, 39.705, -104.9985, 39.725)
+  w <- ways(c(highway = "residential", cycleway = "lane", name = "toucher"))
+  g <- sf::st_geometry(w)
+  g[[1]] <- sf::st_linestring(rbind(c(-105.002, 39.71), c(-105.0000, 39.71)))
+  sf::st_geometry(w) <- g
+  w <- cl_classify(w)
+  out <- cyclelanes:::.clip_lines(w, b)
+  expect_s3_class(out, "sf")
+  # either nothing, or a floating-point sliver far below a centimetre
+  expect_lte(nrow(out), 1L)
+  if (nrow(out) == 1L) expect_lt(out$length_m, 0.01)
+})

@@ -63,9 +63,16 @@
 #'   download of a US state is 50-300 MB and the conversion takes a few
 #'   minutes; extracts lag OSM by about a day. Right for a city or a batch
 #'   of cities; Overpass is right for a neighbourhood.
-#' @param extract_dir Where `osmextract` keeps downloaded extracts. Defaults
-#'   to [osmextract::oe_download_directory()], which honours the
-#'   `OSMEXT_DOWNLOAD_DIRECTORY` environment variable.
+#' @param extract_dir Where downloaded extracts and their converted
+#'   GeoPackages are kept. Defaults to an `extracts` folder under
+#'   [cl_cache_dir()], so a region is downloaded once per machine, not once
+#'   per session.
+#' @param max_extract_mb Refuse to download an extract larger than this many
+#'   megabytes. The extract is chosen as the smallest Geofabrik region that
+#'   fully contains the clip boundary (or the bounding box when there is
+#'   none); a box that straddles a state line can match a whole multi-state
+#'   region, and this stops that quietly turning into a multi-gigabyte
+#'   download.
 #' @return An `sf` object of `LINESTRING`s in WGS84 (EPSG:4326) with the raw
 #'   OSM tag columns present in the area. A zero-row `sf` if nothing matched.
 #'   The WGS84 bounding box queried is stored in `attr(x, "cl_bbox")`, the
@@ -84,7 +91,8 @@
 cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
                          retries = 3, tile = NULL, cache = FALSE,
                          cache_dir = cl_cache_dir(), cache_max_age = 30,
-                         backend = c("overpass", "extract"), extract_dir = NULL) {
+                         backend = c("overpass", "extract"), extract_dir = NULL,
+                         max_extract_mb = 1000) {
   backend <- match.arg(backend)
   bb <- cl_bbox(place)
   boundary <- .resolve_clip(place, clip)
@@ -109,7 +117,7 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
     lines <- hit$lines
     fetched <- hit$fetched
   } else if (backend == "extract") {
-    lines <- .extract_lines(bb, extract_dir)
+    lines <- .extract_lines(bb, extract_dir, boundary = boundary, max_extract_mb = max_extract_mb)
     fetched <- Sys.time()
     if (isTRUE(cache)) .cache_write(key, cache_dir, list(lines = lines, fetched = fetched, bbox = bb))
   } else {
@@ -257,12 +265,32 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
 
 # Bicycle-relevant ways from a Geofabrik extract covering `bb`, in the same
 # shape as an Overpass result (osm_id, highway, tag columns, geometry).
-.extract_lines <- function(bb, extract_dir = NULL) {
+.extract_lines <- function(bb, extract_dir = NULL, boundary = NULL, max_extract_mb = 1000) {
   rlang::check_installed("osmextract", reason = "for backend = \"extract\"")
   poly <- sf::st_as_sfc(sf::st_bbox(
     c(xmin = bb[["xmin"]], ymin = bb[["ymin"]], xmax = bb[["xmax"]], ymax = bb[["ymax"]]),
     crs = sf::st_crs(4326)))
-  raw <- .extract_query(poly, extract_dir)
+  if (is.null(extract_dir)) extract_dir <- file.path(cl_cache_dir(), "extracts")
+  if (!dir.exists(extract_dir)) dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Match on the boundary polygon when there is one: a city's own polygon
+  # sits inside its extract, while its bounding box may straddle a line.
+  match_geom <- if (!is.null(boundary)) sf::st_geometry(sf::st_transform(boundary, 4326)) else poly
+  m <- .extract_match(match_geom)
+  size_mb <- as.numeric(m$file_size %||% NA) / 1e6
+  rlang::inform(sprintf("Using Geofabrik extract %s (%s).", basename(m$url),
+                        if (is.na(size_mb)) "size unknown" else sprintf("%.0f MB", size_mb)))
+  if (!is.na(size_mb) && size_mb > max_extract_mb) {
+    rlang::abort(c(
+      sprintf("The smallest extract covering this area is %s, %.0f MB, above `max_extract_mb` = %g.",
+              basename(m$url), size_mb, max_extract_mb),
+      i = "Pass a tighter `clip` polygon or bbox, or raise `max_extract_mb` if the download is intended."
+    ))
+  }
+
+  old <- options(timeout = max(3600, getOption("timeout", 60)))
+  on.exit(options(old), add = TRUE)
+  raw <- .extract_query(m$url, poly, extract_dir)
   if (is.null(raw) || nrow(raw) == 0L) return(.empty_osm_sf())
   raw <- .ensure_cols(raw, c("osm_id", "highway", .cl_extract_tags))
   keep <- !is.na(raw$highway) & (
@@ -280,14 +308,16 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   out
 }
 
-# The actual osmextract call. Mocked in tests.
-.extract_query <- function(poly, extract_dir = NULL) {
-  args <- list(
-    place = poly, layer = "lines", provider = "geofabrik",
-    extra_tags = .cl_extract_tags,
-    boundary = poly, boundary_type = "clipsrc",
-    max_file_size = Inf, quiet = TRUE
-  )
-  if (!is.null(extract_dir)) args$download_directory <- extract_dir
-  do.call(osmextract::oe_get, args)
+# Which Geofabrik extract covers `geom`? Returns list(url, file_size).
+# Mocked in tests.
+.extract_match <- function(geom) {
+  osmextract::oe_match(geom, provider = "geofabrik", quiet = TRUE)
+}
+
+# Download (once) and read the lines layer clipped to `poly`. Mocked in tests.
+.extract_query <- function(url, poly, extract_dir) {
+  path <- osmextract::oe_download(file_url = url, download_directory = extract_dir, quiet = TRUE)
+  osmextract::oe_read(path, layer = "lines", extra_tags = .cl_extract_tags,
+                      boundary = poly, boundary_type = "clipsrc",
+                      download_directory = extract_dir, quiet = TRUE)
 }

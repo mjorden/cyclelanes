@@ -22,9 +22,16 @@
   if (nrow(cross) > 0L) {
     cut <- suppressWarnings(sf::st_intersection(cross, bw))
     if (nrow(cut) > 0L) {
-      cut <- suppressWarnings(sf::st_collection_extract(cut, "LINESTRING"))
+      # a way touching the boundary at a point, or a mixed result, needs the
+      # line parts pulled out; a way cut into pieces is a MULTILINESTRING
+      types <- as.character(sf::st_geometry_type(cut))
+      if (any(types == "GEOMETRYCOLLECTION")) {
+        cut <- suppressWarnings(sf::st_collection_extract(cut, "LINESTRING"))
+        types <- as.character(sf::st_geometry_type(cut))
+      }
+      cut <- cut[types %in% c("LINESTRING", "MULTILINESTRING"), ]
       cut <- cut[!sf::st_is_empty(cut), ]
-      keep <- rbind(keep, cut)
+      if (nrow(cut) > 0L) keep <- rbind(keep, cut)
     }
   }
   out <- sf::st_transform(keep, crs_in)
