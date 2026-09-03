@@ -70,7 +70,14 @@ cl_facility_levels <- function() {
   "cycleway:buffer", "cycleway:left:buffer", "cycleway:right:buffer",
   "cycleway:both:buffer",
   "bicycle", "bicycle_road", "cyclestreet", "foot", "footway", "segregated",
-  "is_sidepath", "oneway", "surface"
+  "is_sidepath", "oneway", "surface",
+  # lane-quality attributes (#11)
+  "cycleway:lane", "cycleway:left:lane", "cycleway:right:lane", "cycleway:both:lane",
+  "cycleway:separation", "cycleway:left:separation", "cycleway:right:separation",
+  "cycleway:both:separation",
+  "cycleway:oneway", "cycleway:left:oneway", "cycleway:right:oneway", "cycleway:both:oneway",
+  "cycleway:width", "cycleway:left:width", "cycleway:right:width", "cycleway:both:width",
+  "oneway:bicycle", "width", "maxspeed", "lanes", "lit", "smoothness"
 )
 
 # Surfaces that count as paved for `strict = TRUE`.
@@ -105,8 +112,55 @@ cl_facility_levels <- function() {
   "osm_id", "name", "highway",
   "facility_type", "facility_left", "facility_right", "n_sides",
   "contraflow", "shared_with_pedestrians", "mapped_separately",
-  "oneway", "surface", "length_m"
+  "lane_kind", "separation", "two_way", "contraflow_allowed", "width_m",
+  "road_maxspeed_kph", "road_lanes", "lit", "surface", "smoothness",
+  "oneway", "length_m"
 )
+
+# Pick, per way, the value of a per-side tag family for the side that carries
+# the facility: the explicit side tag, else :both, else the bare tag.
+.side_value <- function(x, family, side) {
+  bare <- .norm_tag(x[[paste0("cycleway:", family)]])
+  both <- .norm_tag(x[[paste0("cycleway:both:", family)]])
+  left <- .norm_tag(x[[paste0("cycleway:left:", family)]])
+  right <- .norm_tag(x[[paste0("cycleway:right:", family)]])
+  out <- dplyr::coalesce(ifelse(side == "left", left, right), both, bare)
+  out
+}
+
+# "1.5", "1.5 m", "150 cm", "5'", "5 ft", "5.5'" -> metres
+.parse_width_m <- function(x) {
+  v <- .norm_tag(x)
+  out <- rep(NA_real_, length(v))
+  ok <- !is.na(v)
+  if (!any(ok)) return(out)
+  s <- gsub(",", ".", v[ok], fixed = TRUE)
+  num <- suppressWarnings(as.numeric(sub("^\\s*([0-9]*\\.?[0-9]+).*$", "\\1", s)))
+  unit <- ifelse(grepl("cm", s), "cm",
+          ifelse(grepl("ft|'|feet|foot", s), "ft",
+          ifelse(grepl("in\\b|\"", s), "in", "m")))
+  factor <- c(m = 1, cm = 0.01, ft = 0.3048, `in` = 0.0254)[unit]
+  val <- num * unname(factor)
+  val[!is.finite(val) | val <= 0 | val > 30] <- NA_real_
+  out[ok] <- val
+  out
+}
+
+# "30", "30 mph", "50 km/h", "walk", "none" -> km/h
+.parse_maxspeed_kph <- function(x) {
+  v <- .norm_tag(x)
+  out <- rep(NA_real_, length(v))
+  ok <- !is.na(v)
+  if (!any(ok)) return(out)
+  s <- v[ok]
+  num <- suppressWarnings(as.numeric(sub("^\\s*([0-9]*\\.?[0-9]+).*$", "\\1", s)))
+  mph <- grepl("mph", s)
+  val <- ifelse(mph, num * 1.609344, num)
+  val[s %in% c("walk")] <- 7
+  val[!is.finite(val) | val <= 0 | val > 200] <- NA_real_
+  out[ok] <- val
+  out
+}
 
 #' Classify OpenStreetMap ways into the facility taxonomy
 #'
@@ -164,8 +218,24 @@ cl_facility_levels <- function() {
 #'   `facility_left`, `facility_right` (factors over [cl_facility_levels()]),
 #'   `n_sides` (0-2, `NA` for separated paths), `contraflow`,
 #'   `shared_with_pedestrians`, `mapped_separately` (a facility drawn as its
-#'   own way rather than as a tag on the road), `oneway`, `surface`,
-#'   `length_m`, and geometry.
+#'   own way rather than as a tag on the road), the lane-quality attributes
+#'   below, `oneway`, `length_m`, and geometry.
+#'
+#'   Lane-quality attributes, all `NA` when untagged, taken from the side
+#'   that carries `facility_type` (the explicit `cycleway:left`/`:right`
+#'   tag, else `cycleway:both`, else the bare `cycleway:*` tag):
+#'   * `lane_kind`: `exclusive`, `advisory` or `pictogram` from
+#'     `cycleway[:side]:lane`;
+#'   * `separation`: what physically separates a track, from
+#'     `cycleway[:side]:separation` (`bollard`, `kerb`, `planter`,
+#'     `parking_lane`, `flex_post`, ...);
+#'   * `two_way`: `cycleway[:side]:oneway=no`, or `oneway` not `yes` on a path;
+#'   * `contraflow_allowed`: `oneway:bicycle=no` on a one-way street;
+#'   * `width_m`: `cycleway[:side]:width`, or `width` on a path, parsed to
+#'     metres from `1.5`, `1.5 m`, `150 cm`, `5 ft`, `5'`;
+#'   * `road_maxspeed_kph`: the parent road's `maxspeed` (mph converted);
+#'   * `road_lanes`: the parent road's `lanes`;
+#'   * `lit`, `surface`, `smoothness`: copied through.
 #' @examples
 #' ways <- sf::st_sf(
 #'   highway = c("residential", "cycleway", "primary"),
@@ -257,6 +327,23 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE,
 
   shared_peds <- is_shared_path | (is_dedicated_path & foot %in% "yes")
 
+  # lane-quality attributes from the side that carries the facility
+  side <- ifelse(!is.na(fl) & !is.na(fr) &
+                   match(fr, lv) < match(fl, lv), "right", "left")
+  lane_kind <- .side_value(x, "lane", side)
+  lane_kind[!lane_kind %in% c("exclusive", "advisory", "pictogram")] <- NA_character_
+  separation <- .side_value(x, "separation", side)
+  cw_oneway <- .side_value(x, "oneway", side)
+  oneway <- .norm_tag(x$oneway)
+  two_way <- ifelse(is_path, !oneway %in% c("yes", "-1", "true", "1"),
+                    ifelse(is.na(cw_oneway), NA, cw_oneway %in% "no"))
+  contraflow_allowed <- oneway %in% c("yes", "-1") & .norm_tag(x[["oneway:bicycle"]]) %in% "no"
+  width_m <- .parse_width_m(ifelse(is_path, x$width, .side_value(x, "width", side)))
+  road_maxspeed_kph <- .parse_maxspeed_kph(x$maxspeed)
+  road_lanes <- suppressWarnings(as.integer(sub("^\\s*([0-9]+).*$", "\\1", .norm_tag(x$lanes))))
+  road_maxspeed_kph[is_path] <- NA_real_
+  road_lanes[is_path] <- NA_integer_
+
   out <- x
   out$facility_type <- .facility_factor(overall)
   out$facility_left <- .facility_factor(fl)
@@ -265,6 +352,15 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE,
   out$contraflow <- contraflow
   out$shared_with_pedestrians <- shared_peds
   out$mapped_separately <- is_sidepath
+  out$lane_kind <- lane_kind
+  out$separation <- separation
+  out$two_way <- two_way
+  out$contraflow_allowed <- contraflow_allowed
+  out$width_m <- width_m
+  out$road_maxspeed_kph <- road_maxspeed_kph
+  out$road_lanes <- road_lanes
+  out$lit <- .norm_tag(x$lit)
+  out$smoothness <- .norm_tag(x$smoothness)
   out$length_m <- .length_m(out)
 
   keep <- .classify_out_cols

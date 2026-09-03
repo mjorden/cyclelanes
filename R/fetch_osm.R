@@ -260,7 +260,13 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   "name", "cycleway", "cycleway:left", "cycleway:right", "cycleway:both",
   "cycleway:buffer", "cycleway:left:buffer", "cycleway:right:buffer",
   "cycleway:both:buffer", "bicycle", "bicycle_road", "cyclestreet", "foot",
-  "footway", "segregated", "is_sidepath", "oneway", "surface", "lit", "width"
+  "footway", "segregated", "is_sidepath", "oneway", "surface", "lit", "width",
+  "cycleway:lane", "cycleway:left:lane", "cycleway:right:lane", "cycleway:both:lane",
+  "cycleway:separation", "cycleway:left:separation", "cycleway:right:separation",
+  "cycleway:both:separation",
+  "cycleway:oneway", "cycleway:left:oneway", "cycleway:right:oneway", "cycleway:both:oneway",
+  "cycleway:width", "cycleway:left:width", "cycleway:right:width", "cycleway:both:width",
+  "oneway:bicycle", "maxspeed", "lanes", "smoothness"
 )
 
 # Bicycle-relevant ways from a Geofabrik extract covering `bb`, in the same
