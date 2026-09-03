@@ -116,20 +116,34 @@ boundary so Lakewood and Aurora do not leak in, and the official layer is
 cut to the same polygon.
 
 ```{r, eval = FALSE}
-denver <- cl_bike_lanes("Denver, Colorado", cache = TRUE)
+denver <- cl_bike_lanes("Denver, Colorado", backend = "extract", cache = TRUE)
 official <- cl_fetch_official("denver", bbox = attr(denver, "cl_boundary"))
 cl_compare(denver, official)
 ```
 
+Run on 2026-09-03 against the Colorado Geofabrik extract, that gives
+5,407 OSM facilities and 642 km inside the city limits against the city's
+811 segments and 616 km. Spatially the two agree on 78% of each other's
+length; on facility type, 55%, or 87% once adjacent levels count. The
+confusion matrix shows two conventions rather than errors: the city files
+169 km of off-street network as "Trail" where OSM tags most of it as
+`path` + `bicycle=designated` (`shared_use_path` here, 261 km of it), and
+the city's 62 km of neighborhood bikeways barely exist in OSM (5 km),
+because a quiet street with wayfinding signs has little for a mapper to
+see.
+
 Two things to keep in mind at that scale:
 
-* **Overpass is a shared public server.** It rate-limits by address and
-  refuses long queries when busy. `cl_bike_lanes()` retries with backoff,
-  `tile = 0.12` splits a city into small queries that pass more easily,
-  and `cache = TRUE` means a re-run of the script never touches the server.
+* **Use the extract backend for a city.** Overpass is a shared public
+  server that rate-limits by address and refuses long queries when busy;
+  `cl_bike_lanes()` retries with backoff and `cache = TRUE` avoids
+  re-fetching, but `backend = "extract"` sidesteps it entirely by reading
+  a Geofabrik extract through `osmextract`. The first download of a state
+  is large (Colorado is 260 MB); after that every city in it is local.
 * **`shared_use_path` is where OSM is generous.** Park footways tagged
   `bicycle=designated` count; `strict = TRUE` drops the ones with no paved
-  surface tag when you want on-road-quality kilometres.
+  surface tag when you want on-road-quality kilometres. Denver strict:
+  3,436 facilities and 388 km.
 
 ## Provenance
 

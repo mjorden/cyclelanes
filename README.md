@@ -35,15 +35,25 @@ library(cyclelanes)
 # 1. OpenStreetMap, any place name or bounding box. A place name is
 #    clipped to its administrative boundary, so this is Denver proper,
 #    not the bounding box that spills into Lakewood and Aurora.
-denver <- cl_bike_lanes("Denver, Colorado")
+#    backend = "extract" reads a Geofabrik extract instead of querying
+#    Overpass, which is the right choice for a whole city.
+denver <- cl_bike_lanes("Denver, Colorado", backend = "extract", cache = TRUE)
 cl_summary(denver)
 #>          facility_type n_segments length_km length_mi share
-#> 1       separated_path       1843     412.7     256.4 0.41
-#> 2       protected_lane        212      48.1      29.9 0.05
+#> 1       separated_path        637      47.3      29.4 0.074
+#> 2      shared_use_path       2249     261.3     162.4 0.407
+#> 3       protected_lane        489      51.2      31.8 0.080
+#> 4        buffered_lane        408      60.0      37.3 0.093
+#> 5         painted_lane       1261     167.3     104.0 0.261
+#> 6 neighborhood_bikeway         27       4.7       2.9 0.007
 #> ...
 
-cl_plot(denver, title = "Denver bike facilities (OpenStreetMap)")
+cl_plot(denver, title = "Denver bike facilities, OpenStreetMap")
+```
 
+![Denver bike facilities from OpenStreetMap, coloured by facility type](man/figures/denver_osm.png)
+
+```r
 # 2. The city's own inventory, through the same taxonomy, cut to the same
 #    boundary so the two layers cover the same ground
 official <- cl_fetch_official("denver", bbox = attr(denver, "cl_boundary"))
@@ -53,10 +63,26 @@ cl_summary(official, by = c("facility_type", "status"))
 cmp <- cl_compare(denver, official, tolerance = 15)
 cmp
 #> <cl_comparison> tolerance = 15 m
-#>    layer n_segments length_km matched_km matched_frac
-#>      osm       ...
-#> official       ...
+#>
+#>    layer n_segments length_km matched_km matched_frac type_agreement type_adjacent
+#>      osm       5407     641.8      501.1        0.781          0.552         0.869
+#> official        811     615.6      472.0        0.767          0.570         0.900
 
+cl_plot(cmp$official, colour = "type_match",
+        title = "City segments: does OSM agree on the facility type?")
+```
+
+![City of Denver segments coloured green where OpenStreetMap assigns the same facility type, red where it differs, grey where OSM has nothing nearby](man/figures/denver_agreement.png)
+
+Both sources agree that *something* is there for about 78% of each
+other's length. They agree on *what* for 55% of it, or 87% once adjacent
+levels (painted versus buffered lane) are allowed. The two conventions
+gaps the confusion matrix exposes are off-street, where the city files
+169 km as "Trail" and OSM tags most of it `path` + `bicycle=designated`
+(a `shared_use_path` here), and neighborhood bikeways, of which the city
+has 62 km and OSM 5 km.
+
+```r
 # Official facilities that OSM does not know about
 missing <- dplyr::filter(cmp$official, matched_frac < 0.5)
 cl_plot(missing)
