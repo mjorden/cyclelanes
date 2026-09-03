@@ -1,0 +1,52 @@
+url: https://mjorden.github.io/cyclelanes/
+
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#1b7837"
+
+home:
+  title: "cyclelanes: bike infrastructure from OpenStreetMap and city open data"
+
+reference:
+- title: Fetch from OpenStreetMap
+  desc: Everything for a place, from Overpass, with retries, mirrors and a cache.
+  contents:
+  - cl_bike_lanes
+  - cl_fetch_osm
+  - cl_bbox
+  - cl_boundary
+  - cl_cache_dir
+- title: Classify
+  desc: The facility taxonomy and how OSM tags map into it.
+  contents:
+  - cl_classify
+  - cl_facility_levels
+- title: Official city inventories
+  desc: A registry of municipal sources read through the same taxonomy.
+  contents:
+  - cl_fetch_official
+  - cl_sources
+  - cl_register_source
+- title: Analyse
+  contents:
+  - cl_summary
+  - cl_compare
+- title: Plot
+  contents:
+  - cl_plot
+  - cl_palette
+- title: Data
+  contents:
+  - denver_lodo
+
+articles:
+- title: Articles
+  navbar: ~
+  contents:
+  - denver
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]

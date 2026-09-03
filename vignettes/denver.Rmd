@@ -1,0 +1,130 @@
+---
+title: "Denver: OpenStreetMap against the city's own inventory"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Denver: OpenStreetMap against the city's own inventory}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 6
+)
+has_ggplot2 <- requireNamespace("ggplot2", quietly = TRUE)
+```
+
+This walk-through uses `denver_lodo`, a frozen sample of both data sources
+for a small box over downtown Denver, so it runs without network access.
+The last section shows the same calls at city scale.
+
+```{r setup}
+library(cyclelanes)
+```
+
+## 1. Classify the OpenStreetMap ways
+
+`denver_lodo$osm` is exactly what `cl_fetch_osm()` returns: one row per
+way with whatever OSM tags exist in the area, unclassified.
+
+```{r}
+nrow(denver_lodo$osm)
+head(names(denver_lodo$osm), 20)
+```
+
+`cl_classify()` turns the tagging into the package taxonomy, resolving
+`cycleway:left` / `cycleway:right` per side and keeping the more protected
+side as `facility_type`. Ways that carry a bicycle tag but are not a
+facility (a sidewalk with `bicycle=designated`, a road with `cycleway=no`)
+are dropped with `drop_none = TRUE`.
+
+```{r}
+lanes <- cl_classify(denver_lodo$osm, drop_none = TRUE)
+knitr::kable(cl_summary(lanes), digits = 2)
+```
+
+```{r, eval = has_ggplot2, fig.alt = "Map of downtown Denver bike facilities from OpenStreetMap, coloured by facility type"}
+cl_plot(lanes, title = "Downtown Denver, OpenStreetMap")
+```
+
+## 2. The city's inventory through the same taxonomy
+
+`denver_lodo$official` is the same box from Denver's *Denver Moves: Bikes*
+2025 layer, already crosswalked into the taxonomy. The city's own class is
+kept in `official_class`, and `status` says whether a segment is built as
+recorded or has upgrades planned.
+
+```{r}
+knitr::kable(cl_summary(denver_lodo$official, by = c("facility_type", "status")), digits = 2)
+```
+
+## 3. How well do they agree?
+
+`cl_compare()` measures two things. Spatially: what share of each layer
+lies within `tolerance` metres of the other. And by type: for every
+matched segment, which facility type the other layer assigns to it.
+
+```{r}
+cmp <- cl_compare(lanes, denver_lodo$official, tolerance = 15)
+cmp
+```
+
+The confusion matrix is where the story is. Rows are the city's type,
+columns are what OSM calls the same ground, in kilometres.
+
+```{r}
+round(cmp$confusion, 1)
+```
+
+Downtown, both sources agree almost everywhere that *something* exists,
+but they disagree on *what* for about half the length. The largest cell
+off the diagonal is usually the city's protected lanes that OSM mappers
+tagged as plain `cycleway=lane`, which is worth knowing before quoting
+either source's protected-lane mileage.
+
+```{r, eval = has_ggplot2, fig.alt = "Map of the city's downtown segments coloured green where OpenStreetMap assigns the same facility type, red where it differs, grey where OSM has nothing nearby"}
+cl_plot(cmp$official, colour = "type_match",
+        title = "City segments: does OSM agree on the facility type?")
+```
+
+Segments the city has and OSM lacks entirely are the ones with a low
+matched fraction:
+
+```{r}
+gaps <- cmp$official[cmp$official$matched_frac < 0.5, ]
+nrow(gaps)
+knitr::kable(sf::st_drop_geometry(gaps)[, c("name", "official_class", "status")])
+```
+
+## 4. The same thing at city scale
+
+Everything above works on a whole city; it just needs the network. A place
+name is geocoded, the Overpass box is clipped to the city's administrative
+boundary so Lakewood and Aurora do not leak in, and the official layer is
+cut to the same polygon.
+
+```{r, eval = FALSE}
+denver <- cl_bike_lanes("Denver, Colorado", cache = TRUE)
+official <- cl_fetch_official("denver", bbox = attr(denver, "cl_boundary"))
+cl_compare(denver, official)
+```
+
+Two things to keep in mind at that scale:
+
+* **Overpass is a shared public server.** It rate-limits by address and
+  refuses long queries when busy. `cl_bike_lanes()` retries with backoff,
+  `tile = 0.12` splits a city into small queries that pass more easily,
+  and `cache = TRUE` means a re-run of the script never touches the server.
+* **`shared_use_path` is where OSM is generous.** Park footways tagged
+  `bicycle=designated` count; `strict = TRUE` drops the ones with no paved
+  surface tag when you want on-road-quality kilometres.
+
+## Provenance
+
+OpenStreetMap data is © OpenStreetMap contributors, ODbL. The Denver layer
+is the City and County of Denver's Denver Moves: Bikes 2025 bikeway
+inventory, via the Denver Open Data Catalog. `denver_lodo$fetched` records
+when both were fetched: `r denver_lodo$fetched`.

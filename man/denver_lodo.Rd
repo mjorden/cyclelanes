@@ -8,11 +8,11 @@
 A list with four elements:
 \describe{
 \item{\code{osm}}{An \code{sf} of raw OpenStreetMap ways as returned by
-\code{\link[=cl_fetch_osm]{cl_fetch_osm()}} with \code{clip = FALSE}: one row per way with the OSM tag
-columns present in the area (tags that are \code{NA} for every way are
+\code{\link[=cl_fetch_osm]{cl_fetch_osm()}}, cut at the box edge: one row per way with the OSM
+tag columns present in the area (tags that are \code{NA} for every way are
 dropped). Unclassified; pass it to \code{\link[=cl_classify]{cl_classify()}}.}
 \item{\code{official}}{An \code{sf} from \link[=cl_fetch_official]{cl_fetch_official("denver")}
-restricted to the same box, already in the package taxonomy.}
+cut to the same box, already in the package taxonomy.}
 \item{\code{bbox}}{The WGS84 bounding box, \code{c(xmin, ymin, xmax, ymax)}.}
 \item{\code{fetched}}{The \code{Date} both layers were fetched.}
 }
