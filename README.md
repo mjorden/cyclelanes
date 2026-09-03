@@ -144,6 +144,19 @@ the built-in registry are welcome.
   published under the Denver Open Data terms; `cl_sources()` carries the
   attribution string to reproduce.
 
+## Development
+
+```r
+devtools::test()      # offline suite
+```
+
+The tests that talk to Overpass, Nominatim, and the Denver ArcGIS service
+are opt-in so CI never fails on a shared server's rate limit:
+
+```r
+withr::with_envvar(c(CYCLELANES_LIVE_TESTS = "true"), devtools::test())
+```
+
 ## License
 
 MIT. OpenStreetMap data is © OpenStreetMap contributors, ODbL.
