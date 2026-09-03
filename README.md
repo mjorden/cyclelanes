@@ -65,6 +65,15 @@ iterate:
 lodo <- cl_bike_lanes(c(-105.005, 39.740, -104.985, 39.752))
 ```
 
+To try the package with no network at all, the same downtown box ships
+frozen as `denver_lodo`: raw OSM ways plus the city's segments, fetched
+2026-09-03.
+
+```r
+lanes <- cl_classify(denver_lodo$osm, drop_none = TRUE)
+cl_compare(lanes, denver_lodo$official)
+```
+
 ## The taxonomy
 
 Every facility from either source lands in one of these levels, ordered

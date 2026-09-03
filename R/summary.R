@@ -10,6 +10,8 @@
 #'   `share` (fraction of total length) per group. Empty groups of a factor
 #'   are omitted.
 #' @examples
+#' cl_summary(cl_classify(denver_lodo$osm, drop_none = TRUE))
+#' cl_summary(denver_lodo$official, by = c("facility_type", "status"))
 #' \dontrun{
 #' cl_summary(cl_bike_lanes("Boulder, Colorado"))
 #' }

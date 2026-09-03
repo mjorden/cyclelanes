@@ -32,6 +32,9 @@ cl_palette <- function() {
 #'   draws agreeing segments green, disagreeing red, and unmatched grey.
 #' @return A `ggplot` object.
 #' @examples
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   cl_plot(cl_classify(denver_lodo$osm, drop_none = TRUE), title = "Downtown Denver (OSM)")
+#' }
 #' \dontrun{
 #' cl_plot(cl_bike_lanes("Denver, Colorado"), title = "Denver bike facilities (OSM)")
 #' }

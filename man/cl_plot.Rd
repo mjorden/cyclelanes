@@ -29,6 +29,9 @@ A \code{ggplot} object.
 A \code{ggplot2} map coloured by \code{facility_type}. Requires \code{ggplot2}.
 }
 \examples{
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  cl_plot(cl_classify(denver_lodo$osm, drop_none = TRUE), title = "Downtown Denver (OSM)")
+}
 \dontrun{
 cl_plot(cl_bike_lanes("Denver, Colorado"), title = "Denver bike facilities (OSM)")
 }
