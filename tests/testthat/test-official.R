@@ -114,3 +114,19 @@ test_that("standardise handles a zero-row layer", {
   expect_equal(nrow(out), 0L)
   expect_true("facility_type" %in% names(out))
 })
+
+test_that("Austin is registered and its crosswalk covers every published class", {
+  s <- cl_sources()
+  expect_true("austin" %in% s$city)
+  # BICYCLE_FACILITY distinct values observed on the live service, 2026-09-02
+  observed <- c("Bike Lane", "Bike Lane - Buffered", "Bike Lane - Climbing",
+                "Bike Lane - Protected One-Way", "Bike Lane - Protected Two-Way",
+                "Bike Lane - wParking", "Bridge", "Neighborhood Bikeway", "None",
+                "Shared Lane", "Sharrows", "Shoulder", "Trail - Paved",
+                "Trail - Unpaved", "Wide Curb Lane", "Wide Shoulder")
+  cw <- cyclelanes:::.austin_crosswalk
+  expect_setequal(names(cw), observed)
+  expect_true(all(cw %in% cl_facility_levels()))
+  expect_equal(unname(cw["Bike Lane - Protected Two-Way"]), "protected_lane")
+  expect_equal(unname(cw["None"]), "none")
+})

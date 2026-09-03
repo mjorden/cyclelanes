@@ -19,8 +19,52 @@
   "Shared Street"        = "shared_lane"
 )
 
+# Austin's BICYCLE_FACILITY classes (Austin Transportation & Public Works
+# bicycle facilities layer). "Wide Curb Lane" is a general-traffic lane with
+# extra width and no marking, so it lands with the shared lanes.
+.austin_crosswalk <- c(
+  "Trail - Paved"                 = "separated_path",
+  "Trail - Unpaved"               = "separated_path",
+  "Bridge"                        = "separated_path",
+  "Bike Lane - Protected One-Way" = "protected_lane",
+  "Bike Lane - Protected Two-Way" = "protected_lane",
+  "Bike Lane - Buffered"          = "buffered_lane",
+  "Bike Lane"                     = "painted_lane",
+  "Bike Lane - Climbing"          = "painted_lane",
+  "Bike Lane - wParking"          = "painted_lane",
+  "Neighborhood Bikeway"          = "neighborhood_bikeway",
+  "Shared Lane"                   = "shared_lane",
+  "Sharrows"                      = "shared_lane",
+  "Wide Curb Lane"                = "shared_lane",
+  "Shoulder"                      = "shoulder",
+  "Wide Shoulder"                 = "shoulder",
+  "None"                          = "none"
+)
+
 .builtin_sources <- function() {
   list(
+    austin = list(
+      city = "austin",
+      label = "Austin, Texas",
+      type = "arcgis",
+      url = paste0("https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/",
+                   "TRANSPORTATION_bicycle_facilities/FeatureServer/0"),
+      id_field = "BIKE_FACILITY_ID",
+      name_field = "FULL_STREET_NAME",
+      class_field = "BICYCLE_FACILITY",
+      extra_fields = c(comfort = "BIKE_LEVEL_OF_COMFORT",
+                       line_type = "LINE_TYPE",
+                       recommended_class = "REC_BICYCLE_FACILITY",
+                       recommended_aaa = "REC_BICYCLE_AAANETWORK"),
+      # Recommended-only segments carry a REC_ class and no existing class.
+      existing_where = "BICYCLE_FACILITY IS NOT NULL AND BICYCLE_FACILITY <> 'None'",
+      existing_filter = NULL,
+      crosswalk = .austin_crosswalk,
+      attribution = paste("City of Austin Transportation & Public Works,",
+                          "Bicycle Facilities (TRANSPORTATION_bicycle_facilities),",
+                          "via the City of Austin Open Data Portal."),
+      homepage = "https://data.austintexas.gov/"
+    ),
     denver = list(
       city = "denver",
       label = "Denver, Colorado",
