@@ -28,7 +28,9 @@ Windows and macOS. `ggplot2` is optional, for `cl_plot()`.
 ```r
 library(cyclelanes)
 
-# 1. OpenStreetMap, any place name or bounding box
+# 1. OpenStreetMap, any place name or bounding box. A place name is
+#    clipped to its administrative boundary, so this is Denver proper,
+#    not the bounding box that spills into Lakewood and Aurora.
 denver <- cl_bike_lanes("Denver, Colorado")
 cl_summary(denver)
 #>          facility_type n_segments length_km length_mi share
@@ -38,8 +40,9 @@ cl_summary(denver)
 
 cl_plot(denver, title = "Denver bike facilities (OpenStreetMap)")
 
-# 2. The city's own inventory, through the same taxonomy
-official <- cl_fetch_official("denver")
+# 2. The city's own inventory, through the same taxonomy, cut to the same
+#    boundary so the two layers cover the same ground
+official <- cl_fetch_official("denver", bbox = attr(denver, "cl_boundary"))
 cl_summary(official, by = c("facility_type", "status"))
 
 # 3. How well do they agree?

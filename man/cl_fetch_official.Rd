@@ -17,9 +17,12 @@ cl_fetch_official(
 \item{existing_only}{Restrict to built facilities, dropping planned or
 recommended ones, where the source can distinguish them.}
 
-\item{bbox}{Optional WGS84 \code{c(xmin, ymin, xmax, ymax)} (or anything
-\code{\link[=cl_bbox]{cl_bbox()}} accepts) to limit the request. Applied server-side for
-ArcGIS sources and after reading for file sources.}
+\item{bbox}{Optional area to limit the request: WGS84
+\code{c(xmin, ymin, xmax, ymax)}, anything \code{\link[=cl_bbox]{cl_bbox()}} accepts, or an
+\code{sf}/\code{sfc} \strong{polygon} such as the output of \code{\link[=cl_boundary]{cl_boundary()}}. The
+bounding box is applied server-side for ArcGIS sources and after
+reading for file sources; a polygon additionally clips the result to
+its outline, so it matches a clipped \code{\link[=cl_bike_lanes]{cl_bike_lanes()}} layer.}
 
 \item{page_size}{Records per request for ArcGIS sources. Capped at the
 layer's advertised \code{maxRecordCount} (typically 1000 or 2000); paging
