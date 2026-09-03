@@ -27,24 +27,45 @@ cl_palette <- function() {
 #' @param x An `sf` with a `facility_type` column.
 #' @param title Optional plot title.
 #' @param linewidth Line width passed to [ggplot2::geom_sf()].
+#' @param colour Column to colour by: `"facility_type"` (default, using
+#'   [cl_palette()]) or `"type_match"` from a [cl_compare()] layer, which
+#'   draws agreeing segments green, disagreeing red, and unmatched grey.
 #' @return A `ggplot` object.
 #' @examples
 #' \dontrun{
 #' cl_plot(cl_bike_lanes("Denver, Colorado"), title = "Denver bike facilities (OSM)")
 #' }
 #' @export
-cl_plot <- function(x, title = NULL, linewidth = 0.6) {
+cl_plot <- function(x, title = NULL, linewidth = 0.6,
+                    colour = c("facility_type", "type_match")) {
   rlang::check_installed("ggplot2", reason = "for cl_plot()")
   .stop_if_not_sf(x)
-  if (!"facility_type" %in% names(x)) {
-    rlang::abort("`x` has no `facility_type` column; classify it first.")
+  colour <- match.arg(colour)
+  if (!colour %in% names(x)) {
+    rlang::abort(sprintf("`x` has no `%s` column; %s first.", colour,
+                         if (colour == "facility_type") "classify it" else "run cl_compare()"))
   }
-  x$facility_type <- .facility_factor(x$facility_type)
-  ggplot2::ggplot(x) +
-    ggplot2::geom_sf(ggplot2::aes(colour = .data$facility_type), linewidth = linewidth) +
-    ggplot2::scale_colour_manual(values = cl_palette(), drop = TRUE, name = "Facility") +
+  base <- ggplot2::ggplot(x) +
     ggplot2::labs(title = title) +
     ggplot2::theme_minimal() +
     ggplot2::theme(panel.grid = ggplot2::element_blank(),
                    axis.text = ggplot2::element_blank())
+  if (colour == "facility_type") {
+    x$facility_type <- .facility_factor(x$facility_type)
+    base$data <- x
+    return(base +
+      ggplot2::geom_sf(ggplot2::aes(colour = .data$facility_type), linewidth = linewidth) +
+      ggplot2::scale_colour_manual(values = cl_palette(), drop = TRUE, name = "Facility"))
+  }
+  x$agreement <- factor(
+    ifelse(is.na(x$type_match), "unmatched", ifelse(x$type_match, "same type", "different type")),
+    levels = c("same type", "different type", "unmatched")
+  )
+  base$data <- x
+  base +
+    ggplot2::geom_sf(ggplot2::aes(colour = .data$agreement), linewidth = linewidth) +
+    ggplot2::scale_colour_manual(
+      values = c(`same type` = "#1a9850", `different type` = "#d73027", unmatched = "#bdbdbd"),
+      drop = TRUE, name = "Agreement"
+    )
 }

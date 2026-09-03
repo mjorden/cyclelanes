@@ -19,28 +19,41 @@ parallel streets.}
 A list of class \code{cl_comparison}:
 \itemize{
 \item \code{summary}: one row per layer with \code{length_km}, \code{matched_km},
-\code{matched_frac};
+\code{matched_frac}, \code{type_agreement} (share of matched length whose
+types agree) and \code{type_adjacent} (share that agrees within one level);
 \item \code{by_type}: the same broken down by \code{facility_type} within each layer;
-\item \code{osm}, \code{official}: the inputs (WGS84) with a \code{matched_frac} column
-added, so unmatched segments can be mapped;
+\item \code{confusion}: a matrix of kilometres, official facility type by OSM
+facility type, with an \code{unmatched} column for official length OSM
+has nothing near;
+\item \code{osm}, \code{official}: the inputs (WGS84) with \code{matched_frac},
+\code{other_type}, \code{type_match} and \code{type_adjacent} columns added, so
+disagreements can be mapped;
 \item \code{tolerance}.
 }
 }
 \description{
 Measures how much of each layer lies within \code{tolerance} metres of the
-other. A segment's \emph{matched fraction} is the share of its length inside a
+other, and whether the two agree on the \emph{kind} of facility where they
+overlap.
+}
+\details{
+A segment's \emph{matched fraction} is the share of its length inside a
 buffer around the other layer, so it is 1 where both sources agree a
 facility exists and 0 where one source has something the other lacks.
-The comparison is purely spatial: it does not check that the two sources
-agree on the \emph{type} of facility, only on its presence.
+For matched segments, \code{other_type} is the facility type of the other
+layer that covers most of the segment, \code{type_match} says whether it
+equals the segment's own type, and \code{type_adjacent} whether it is one
+step away in \code{\link[=cl_facility_levels]{cl_facility_levels()}} (painted vs buffered lane, say),
+which is often a tagging choice rather than a real difference.
 }
 \examples{
 \dontrun{
 osm <- cl_bike_lanes("Denver, Colorado")
-den <- cl_fetch_official("denver")
+den <- cl_fetch_official("denver", bbox = attr(osm, "cl_boundary"))
 cmp <- cl_compare(osm, den)
 cmp
-cl_plot(dplyr::filter(cmp$official, matched_frac < 0.5),
-        title = "Official facilities OSM does not know about")
+cmp$confusion
+cl_plot(cmp$official, colour = "type_match",
+        title = "Where the city and OSM disagree on the facility type")
 }
 }
