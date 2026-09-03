@@ -15,7 +15,8 @@ cl_fetch_osm(
   cache_dir = cl_cache_dir(),
   cache_max_age = 30,
   backend = c("overpass", "extract"),
-  extract_dir = NULL
+  extract_dir = NULL,
+  max_extract_mb = 1000
 )
 }
 \arguments{
@@ -72,9 +73,17 @@ download of a US state is 50-300 MB and the conversion takes a few
 minutes; extracts lag OSM by about a day. Right for a city or a batch
 of cities; Overpass is right for a neighbourhood.}
 
-\item{extract_dir}{Where \code{osmextract} keeps downloaded extracts. Defaults
-to \code{\link[osmextract:oe_download_directory]{osmextract::oe_download_directory()}}, which honours the
-\code{OSMEXT_DOWNLOAD_DIRECTORY} environment variable.}
+\item{extract_dir}{Where downloaded extracts and their converted
+GeoPackages are kept. Defaults to an \code{extracts} folder under
+\code{\link[=cl_cache_dir]{cl_cache_dir()}}, so a region is downloaded once per machine, not once
+per session.}
+
+\item{max_extract_mb}{Refuse to download an extract larger than this many
+megabytes. The extract is chosen as the smallest Geofabrik region that
+fully contains the clip boundary (or the bounding box when there is
+none); a box that straddles a state line can match a whole multi-state
+region, and this stops that quietly turning into a multi-gigabyte
+download.}
 }
 \value{
 An \code{sf} object of \code{LINESTRING}s in WGS84 (EPSG:4326) with the raw

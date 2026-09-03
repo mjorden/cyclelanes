@@ -6,7 +6,8 @@
 #' @inheritParams cl_fetch_osm
 #' @inheritParams cl_classify
 #' @param ... Passed to [cl_fetch_osm()]: `overpass_url`, `retries`, `tile`,
-#'   `cache`, `cache_dir`, `cache_max_age`, `backend`, `extract_dir`.
+#'   `cache`, `cache_dir`, `cache_max_age`, `backend`, `extract_dir`,
+#'   `max_extract_mb`.
 #' @return The classified `sf` described in [cl_classify()], with the queried
 #'   bounding box in `attr(x, "cl_bbox")`, the fetch time in
 #'   `attr(x, "cl_fetched")`, and `attr(x, "cl_source") == "openstreetmap"`.

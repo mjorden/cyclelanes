@@ -20,15 +20,22 @@ extract_result <- function() {
 
 box <- c(-105.01, 39.70, -104.99, 39.72)
 
-with_mock_extract <- function(fn, code) {
-  testthat::local_mocked_bindings(.extract_query = fn, .package = "cyclelanes")
+# `fn(url, poly, extract_dir)` stands in for download + read; the match is a
+# fixed small extract unless `match` is given.
+with_mock_extract <- function(fn, code, match = list(url = "https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf", file_size = 2e7)) {
+  testthat::local_mocked_bindings(
+    .extract_query = function(url, poly, extract_dir) fn(poly, extract_dir),
+    .extract_match = function(geom) match,
+    .package = "cyclelanes"
+  )
   force(code)
 }
 
 test_that("the extract backend keeps bicycle-relevant ways and drops the rest", {
+  withr::local_envvar(CYCLELANES_CACHE_DIR = withr::local_tempdir())
   seen <- list()
   fn <- function(poly, extract_dir) { seen$poly <<- poly; seen$dir <<- extract_dir; extract_result() }
-  out <- with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", clip = FALSE))
+  out <- suppressMessages(with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", clip = FALSE)))
   expect_s3_class(out, "sf")
   # cycleway, lane, track, designated footway, bicycle road; not the plain
   # road, not the waterway (no highway)
@@ -38,7 +45,8 @@ test_that("the extract backend keeps bicycle-relevant ways and drops the rest", 
   expect_equal(attr(out, "cl_bbox"), cl_bbox(box))
   expect_s3_class(seen$poly, "sfc")
   expect_equal(as.numeric(sf::st_bbox(seen$poly)), unname(cl_bbox(box)))
-  expect_null(seen$dir)
+  expect_equal(seen$dir, file.path(cl_cache_dir(), "extracts"))
+  expect_true(dir.exists(seen$dir))
 
   lanes <- cl_classify(out, drop_none = TRUE)
   expect_setequal(as.character(lanes$facility_type),
@@ -46,20 +54,54 @@ test_that("the extract backend keeps bicycle-relevant ways and drops the rest", 
 })
 
 test_that("extract_dir is passed through and an empty extract warns", {
-  fn <- function(poly, extract_dir) { expect_equal(extract_dir, "D:/osm"); extract_result()[0, ] }
-  expect_warning(out <- with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", extract_dir = "D:/osm")),
+  dir <- withr::local_tempdir()
+  fn <- function(poly, extract_dir) { expect_equal(extract_dir, dir); extract_result()[0, ] }
+  expect_warning(out <- suppressMessages(with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", extract_dir = dir))),
                  "no bicycle-tagged ways")
   expect_equal(nrow(out), 0L)
 })
 
+test_that("the boundary polygon, not the bbox, is what gets matched to an extract", {
+  sq <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+    c(-105.02, 39.69), c(-104.98, 39.69), c(-104.98, 39.73), c(-105.02, 39.73), c(-105.02, 39.69)
+  ))), crs = 4326))
+  matched <- NULL
+  testthat::local_mocked_bindings(
+    .extract_match = function(geom) { matched <<- geom; list(url = "https://x/y/small-latest.osm.pbf", file_size = 1e6) },
+    .extract_query = function(url, poly, extract_dir) extract_result(),
+    .package = "cyclelanes"
+  )
+  withr::local_envvar(CYCLELANES_CACHE_DIR = withr::local_tempdir())
+  expect_message(out <- cl_fetch_osm(box, backend = "extract", clip = sq), "small-latest")
+  expect_equal(as.numeric(sf::st_bbox(matched)), as.numeric(sf::st_bbox(sq)))
+  # with no boundary the bbox polygon is matched
+  suppressMessages(cl_fetch_osm(box, backend = "extract", clip = FALSE))
+  expect_equal(as.numeric(sf::st_bbox(matched)), unname(cl_bbox(box)))
+})
+
+test_that("an oversized extract is refused with the size in the message", {
+  withr::local_envvar(CYCLELANES_CACHE_DIR = withr::local_tempdir())
+  fn <- function(poly, extract_dir) extract_result()
+  expect_error(
+    suppressMessages(with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", clip = FALSE),
+                                       match = list(url = "https://x/us-south-latest.osm.pbf", file_size = 3.2e9))),
+    "3200 MB"
+  )
+  expect_no_error(
+    suppressMessages(with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", clip = FALSE, max_extract_mb = 5000),
+                                       match = list(url = "https://x/us-south-latest.osm.pbf", file_size = 3.2e9)))
+  )
+})
+
 test_that("the extract backend never calls Overpass and caches under its own key", {
+  withr::local_envvar(CYCLELANES_CACHE_DIR = withr::local_tempdir())
   dir <- withr::local_tempdir()
   n_over <- 0L
   testthat::local_mocked_bindings(.overpass_query = function(q) { n_over <<- n_over + 1L; stop("should not be called") },
                                   .package = "cyclelanes")
   n_ext <- 0L
   fn <- function(poly, extract_dir) { n_ext <<- n_ext + 1L; extract_result() }
-  out1 <- with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", cache = TRUE, cache_dir = dir))
+  out1 <- suppressMessages(with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", cache = TRUE, cache_dir = dir)))
   expect_message(out2 <- with_mock_extract(fn, cl_fetch_osm(box, backend = "extract", cache = TRUE, cache_dir = dir)),
                  "cached extract result")
   expect_equal(n_ext, 1L)
@@ -71,9 +113,10 @@ test_that("the extract backend never calls Overpass and caches under its own key
 })
 
 test_that("backend is validated and cl_bike_lanes passes it through", {
+  withr::local_envvar(CYCLELANES_CACHE_DIR = withr::local_tempdir())
   expect_error(cl_fetch_osm(box, backend = "carrier pigeon"), "arg")
   fn <- function(poly, extract_dir) extract_result()
-  lanes <- with_mock_extract(fn, cl_bike_lanes(box, backend = "extract", clip = FALSE))
+  lanes <- suppressMessages(with_mock_extract(fn, cl_bike_lanes(box, backend = "extract", clip = FALSE)))
   expect_gt(nrow(lanes), 0)
   expect_equal(attr(lanes, "cl_backend"), "extract")
 })
