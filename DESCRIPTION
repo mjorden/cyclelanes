@@ -31,8 +31,11 @@ Imports:
     utils
 Suggests:
     ggplot2,
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0),
     withr
+VignetteBuilder: knitr
 Config/testthat/edition: 3
-URL: https://github.com/mjorden/cyclelanes
+URL: https://mjorden.github.io/cyclelanes/, https://github.com/mjorden/cyclelanes
 BugReports: https://github.com/mjorden/cyclelanes/issues

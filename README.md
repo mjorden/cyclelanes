@@ -13,6 +13,9 @@ There is no Google Maps source, and there will not be one: Google exposes
 no bike-lane data endpoint and its terms forbid scraping the map layer.
 OpenStreetMap is where that data actually lives.
 
+Documentation and a worked Denver example:
+<https://mjorden.github.io/cyclelanes/>.
+
 ## Install
 
 ```r

@@ -7,3 +7,6 @@
 ^inst/examples$
 ^\.adversarial-review
 ^data-raw$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

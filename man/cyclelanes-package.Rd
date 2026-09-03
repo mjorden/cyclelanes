@@ -24,6 +24,7 @@ The main entry points are:
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://mjorden.github.io/cyclelanes/}
   \item \url{https://github.com/mjorden/cyclelanes}
   \item Report bugs at \url{https://github.com/mjorden/cyclelanes/issues}
 }
