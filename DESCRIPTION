@@ -1,6 +1,6 @@
 Package: cyclelanes
 Title: Fetch and Classify Bicycle Infrastructure from OpenStreetMap and City Open Data
-Version: 0.1.0
+Version: 0.2.0
 Authors@R:
     person("Matthew", "Jorden", email = "matthew.jorden@gmail.com", role = c("aut", "cre"))
 Description: Pulls bicycle infrastructure for any place from OpenStreetMap via
