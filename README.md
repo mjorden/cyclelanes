@@ -150,7 +150,22 @@ cl_summary(crashes, by = "severity")
 ```
 
 Denver's police layer is built in; other cities register with
-`cl_register_crash_source()`. Police data miss about half of bicycle
+`cl_register_crash_source()`. `cl_crash_join()` snaps each crash to the
+nearest facility and `cl_crash_rates()` reports reported crashes per
+**kilometre-year** by facility type, intersection and mid-block on
+separate rows, because intersection crashes attach to whichever facility
+passes through:
+
+```r
+j <- cl_crash_join(official, crashes, tolerance = 25)
+cl_crash_rates(j, years = 2019:2025)
+cl_plot(official, crashes = crashes)
+```
+
+Per kilometre-year is not per rider: a busy protected lane carries many
+times the riders of a quiet sharrow. Give the facilities an `exposure`
+column (daily bicycle volume) and the rates also come per million
+bicycle-kilometres. Police data miss about half of bicycle
 injury crashes and nearly all crashes without a motor vehicle, so these
 are *reported* crashes, and the layer is revised continuously, so the
 fetch time travels with the result.

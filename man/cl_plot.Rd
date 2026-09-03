@@ -9,7 +9,8 @@ cl_plot(
   title = NULL,
   linewidth = 0.6,
   colour = c("facility_type", "type_match", "lts", "component"),
-  n_components = 8
+  n_components = 8,
+  crashes = NULL
 )
 }
 \arguments{
@@ -28,6 +29,9 @@ coloured and the rest grey.}
 
 \item{n_components}{How many components to colour when
 \code{colour = "component"}.}
+
+\item{crashes}{Optional \code{sf} of points from \code{\link[=cl_fetch_crashes]{cl_fetch_crashes()}} to draw
+over the facilities, sized by severity.}
 }
 \value{
 A \code{ggplot} object.
