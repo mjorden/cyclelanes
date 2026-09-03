@@ -37,8 +37,7 @@
   "Sharrows"                      = "shared_lane",
   "Wide Curb Lane"                = "shared_lane",
   "Shoulder"                      = "shoulder",
-  "Wide Shoulder"                 = "shoulder",
-  "None"                          = "none"
+  "Wide Shoulder"                 = "shoulder"
 )
 
 .builtin_sources <- function() {
@@ -57,7 +56,7 @@
                        recommended_class = "REC_BICYCLE_FACILITY",
                        recommended_aaa = "REC_BICYCLE_AAANETWORK"),
       # Recommended-only segments carry a REC_ class and no existing class.
-      existing_where = "BICYCLE_FACILITY IS NOT NULL AND BICYCLE_FACILITY <> 'None'",
+      existing_where = "BICYCLE_FACILITY IS NOT NULL",
       existing_filter = NULL,
       crosswalk = .austin_crosswalk,
       attribution = paste("City of Austin Transportation & Public Works,",
@@ -298,7 +297,19 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
                          paste(setdiff(names(raw), attr(raw, "sf_column")), collapse = ", ")))
   }
   official_class <- get(src$class_field)
-  facility <- .apply_crosswalk(official_class, src$crosswalk, src$city)
+  facility <- .apply_crosswalk(official_class, src$crosswalk, src$city, warn = FALSE)
+  unmapped <- attr(facility, "unmapped")
+  if (length(unmapped)) {
+    hit <- official_class %in% unmapped
+    km <- sum(.length_m(sf::st_geometry(raw)[hit])) / 1000
+    rlang::warn(c(
+      sprintf("%s: %d class value%s not in the crosswalk set to \"none\" (%d segment%s, %.1f km): %s",
+              src$city, length(unmapped), if (length(unmapped) == 1) "" else "s",
+              sum(hit), if (sum(hit) == 1) "" else "s", km,
+              paste(shQuote(unmapped), collapse = ", ")),
+      i = sprintf("Run cl_check_source(\"%s\") and extend the crosswalk.", src$city)
+    ))
+  }
 
   d <- data.frame(
     source_id = if (is.null(src$id_field)) as.character(seq_len(n)) else get(src$id_field),
@@ -318,16 +329,17 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
   out
 }
 
-.apply_crosswalk <- function(class, crosswalk, city = "source") {
+.apply_crosswalk <- function(class, crosswalk, city = "source", warn = TRUE) {
   out <- unname(crosswalk[class])
   unmapped <- unique(class[!is.na(class) & is.na(out)])
-  if (length(unmapped)) {
+  if (length(unmapped) && warn) {
     rlang::warn(sprintf(
       "%s: %d class value(s) not in the crosswalk were set to \"none\": %s",
       city, length(unmapped), paste(shQuote(unmapped), collapse = ", ")
     ))
   }
   out[is.na(out)] <- "none"
+  attr(out, "unmapped") <- unmapped
   out
 }
 

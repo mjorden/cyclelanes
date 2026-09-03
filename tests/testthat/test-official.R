@@ -16,12 +16,13 @@ test_that("Denver is registered and its crosswalk covers every published class",
 test_that("crosswalk maps known classes and warns on unknown ones", {
   cw <- c("A" = "painted_lane", "B" = "protected_lane")
   expect_equal(cyclelanes:::.apply_crosswalk(c("A", "B", NA), cw),
-               c("painted_lane", "protected_lane", "none"))
+               c("painted_lane", "protected_lane", "none"), ignore_attr = TRUE)
   expect_warning(
     out <- cyclelanes:::.apply_crosswalk(c("A", "Zed"), cw, city = "test"),
     "Zed"
   )
-  expect_equal(out, c("painted_lane", "none"))
+  expect_equal(out, c("painted_lane", "none"), ignore_attr = TRUE)
+  expect_equal(attr(out, "unmapped"), "Zed")
 })
 
 test_that("cl_register_source validates and cl_sources reports it", {
@@ -118,15 +119,15 @@ test_that("standardise handles a zero-row layer", {
 test_that("Austin is registered and its crosswalk covers every published class", {
   s <- cl_sources()
   expect_true("austin" %in% s$city)
-  # BICYCLE_FACILITY distinct values observed on the live service, 2026-09-02
+  # BICYCLE_FACILITY distinct values observed on the live service, 2026-09-03
+  # (cl_check_source("austin"); "None" is not a value, it was a NULL)
   observed <- c("Bike Lane", "Bike Lane - Buffered", "Bike Lane - Climbing",
                 "Bike Lane - Protected One-Way", "Bike Lane - Protected Two-Way",
-                "Bike Lane - wParking", "Bridge", "Neighborhood Bikeway", "None",
+                "Bike Lane - wParking", "Bridge", "Neighborhood Bikeway",
                 "Shared Lane", "Sharrows", "Shoulder", "Trail - Paved",
                 "Trail - Unpaved", "Wide Curb Lane", "Wide Shoulder")
   cw <- cyclelanes:::.austin_crosswalk
   expect_setequal(names(cw), observed)
   expect_true(all(cw %in% cl_facility_levels()))
   expect_equal(unname(cw["Bike Lane - Protected Two-Way"]), "protected_lane")
-  expect_equal(unname(cw["None"]), "none")
 })
