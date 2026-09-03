@@ -1,3 +1,37 @@
+# cyclelanes 0.4.0
+
+"Richer classification and analysis": beyond the presence of a facility.
+
+## Classification
+
+* Lane-quality attributes from the side that carries the facility:
+  `lane_kind` (exclusive / advisory / pictogram), `separation`, `two_way`,
+  `contraflow_allowed`, `width_m` (parsed from metres, centimetres, feet
+  or inches), the parent road's `road_maxspeed_kph` and `road_lanes`, and
+  `lit`, `surface`, `smoothness` (#11).
+* `cl_lts()`: Level of Traffic Stress 1-4 following Mekuria, Furth and
+  Nixon (2012) as simplified in Furth's 2017 tables, on segments. Missing
+  speed or lanes are filled from the road class and `lts_basis` says so.
+  The rule table ships in `inst/extdata/lts_rules.csv` (#12).
+
+## Analysis
+
+* `cl_fetch_osm(date = )` and `cl_bike_lanes(date = )` fetch the network
+  as it was on a date through Overpass's attic data; `cl_timeline()`
+  stacks summaries over a series of dates (#13).
+* `cl_as_sfnetwork()` builds a snapped, undirected `sfnetworks` graph;
+  `cl_components()` labels the connected components of the network at or
+  below a stress level, largest first, with a component table (#14).
+
+## Plots and maps
+
+* `cl_plot()` colours by `"lts"` or `"component"`; legend keys are always
+  drawn as lines.
+* `cl_map()`: an interactive `leaflet` map of any layer, or of a
+  comparison with toggleable OSM / official groups and the gaps
+  highlighted; popups escape every string and link each way to
+  openstreetmap.org (#16).
+
 # cyclelanes 0.3.0
 
 "More cities": adding a city is a fifteen-minute job, and a whole city no
