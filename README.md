@@ -142,14 +142,19 @@ the built-in registry are welcome.
   painted vs buffered lane are reported separately because that
   distinction is often a tagging choice.
 - **Overpass and Nominatim are shared public services.** A whole metro
-  area is fine; a state is not. Cache results rather than re-fetching in a
-  loop, and respect the Nominatim usage policy for geocoding. If the
-  default Overpass instance answers `HTTP 429`, wait a few minutes or
-  point `osmdata` at a mirror first:
+  area is fine; a state is not. Respect the Nominatim usage policy for
+  geocoding. The public Overpass instance answers `HTTP 429` when one
+  address queries too often and `504` when it is busy; `cl_fetch_osm()`
+  retries those with backoff, and you can use a mirror for one call and
+  cache the result so a re-run never touches the server:
 
   ```r
-  osmdata::set_overpass_url("https://overpass.kumi.systems/api/interpreter")
+  denver <- cl_bike_lanes("Denver, Colorado", cache = TRUE,
+                          overpass_url = "https://overpass.private.coffee/api/interpreter")
   ```
+
+  Cached results live in `cl_cache_dir()` for 30 days by default;
+  `cl_cache_clear()` empties it.
 - **Official data is licensed by each city.** The Denver layer is
   published under the Denver Open Data terms; `cl_sources()` carries the
   attribution string to reproduce.

@@ -26,6 +26,7 @@ Imports:
     units,
     jsonlite,
     stats,
+    tools,
     utils
 Suggests:
     ggplot2,

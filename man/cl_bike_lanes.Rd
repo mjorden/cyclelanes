@@ -8,8 +8,10 @@ cl_bike_lanes(
   place,
   drop_none = TRUE,
   keep_tags = FALSE,
+  strict = FALSE,
   timeout = 180,
-  clip = TRUE
+  clip = TRUE,
+  ...
 )
 }
 \arguments{
@@ -29,6 +31,12 @@ no bulk geocoding);
 output columns. By default only \code{osm_id}, \code{name}, \code{highway}, \code{oneway}
 and \code{surface} survive from the input.}
 
+\item{strict}{Also drop \code{shared_use_path} ways that are not
+\code{highway=cycleway} and lack a paved \code{surface} tag (\code{paved}, \code{asphalt},
+\code{concrete}, \code{paving_stones}, ...). Park footways that a mapper tagged
+bike-friendly are the bulk of what this removes; use it when you want
+on-road-quality kilometres only.}
+
 \item{timeout}{Overpass server timeout in seconds. City-scale queries can
 take a minute or more; the public Overpass instance rejects long-running
 queries, so keep \code{place} to a metro area or smaller.}
@@ -40,6 +48,9 @@ is a name; ways crossing the boundary are cut at it. Pass an \code{sf}/\code{sfc
 polygon to clip to your own boundary with any kind of \code{place}, or
 \code{FALSE} to keep the whole box. Ignored for bbox and \code{sf} inputs unless a
 polygon is supplied.}
+
+\item{...}{Passed to \code{\link[=cl_fetch_osm]{cl_fetch_osm()}}: \code{overpass_url}, \code{retries}, \code{tile},
+\code{cache}, \code{cache_dir}, \code{cache_max_age}.}
 }
 \value{
 The classified \code{sf} described in \code{\link[=cl_classify]{cl_classify()}}, with the queried
