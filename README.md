@@ -109,9 +109,19 @@ the park footways that mappers mark bike-friendly.
 
 ## Adding a city
 
-`cl_sources()` lists what is registered. To add one, supply the layer, the
-attribute that holds the facility class, and a crosswalk from that
-attribute's values into the taxonomy:
+`cl_sources()` lists what is registered. To add one, first look at the
+candidate layer: `cl_inspect_source()` prints its fields, the distinct
+values of every short text field, and where its extent sits, so you can
+spot the class field and confirm the layer is actually the city you think
+it is (the first search hit for "Denver bicycle facilities" is an Austin
+layer).
+
+```r
+cl_inspect_source("https://.../FeatureServer/0")
+```
+
+Then supply the layer, the attribute that holds the facility class, and a
+crosswalk from that attribute's values into the taxonomy:
 
 ```r
 cl_register_source(
