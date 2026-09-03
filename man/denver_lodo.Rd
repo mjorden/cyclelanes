@@ -5,7 +5,7 @@
 \alias{denver_lodo}
 \title{Downtown Denver bike facilities, frozen}
 \format{
-A list with four elements:
+A list with six elements:
 \describe{
 \item{\code{osm}}{An \code{sf} of raw OpenStreetMap ways as returned by
 \code{\link[=cl_fetch_osm]{cl_fetch_osm()}}, cut at the box edge: one row per way with the OSM
@@ -15,12 +15,16 @@ dropped). Unclassified; pass it to \code{\link[=cl_classify]{cl_classify()}}.}
 cut to the same box, already in the package taxonomy.}
 \item{\code{bbox}}{The WGS84 bounding box, \code{c(xmin, ymin, xmax, ymax)}.}
 \item{\code{fetched}}{The \code{Date} both layers were fetched.}
+\item{\code{crashes}}{An \code{sf} of reported bicycle-involved crashes in the
+box, 2019-2025, from \link[=cl_fetch_crashes]{cl_fetch_crashes("denver")};
+\code{crash_years} gives the span and \code{crashes_fetched} the date.}
 }
 }
 \source{
 OpenStreetMap contributors (ODbL) via the Overpass API; City and
-County of Denver, Denver Moves: Bikes 2025 bikeway inventory via the
-Denver Open Data Catalog.
+County of Denver, Denver Moves: Bikes 2025 bikeway inventory and Denver
+Police Department traffic accidents (NIBRS), via the Denver Open Data
+Catalog.
 }
 \usage{
 denver_lodo
@@ -35,5 +39,7 @@ or the city's ArcGIS service. Regenerate with \code{data-raw/denver_lodo.R}.
 lanes <- cl_classify(denver_lodo$osm, drop_none = TRUE)
 cl_summary(lanes)
 cl_compare(lanes, denver_lodo$official)
+j <- cl_crash_join(denver_lodo$official, denver_lodo$crashes)
+cl_crash_rates(j, years = denver_lodo$crash_years)
 }
 \keyword{datasets}

@@ -164,6 +164,10 @@ cl_crash_rates(j, years = 2019:2025)
 cl_plot(official, crashes = crashes)
 ```
 
+The frozen `denver_lodo` sample carries the downtown crashes too, and the
+Denver vignette walks through the join and the rates with the caveats
+first.
+
 Per kilometre-year is not per rider: a busy protected lane carries many
 times the riders of a quiet sharrow. Give the facilities an `exposure`
 column (daily bicycle volume) and the rates also come per million
