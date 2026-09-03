@@ -133,7 +133,13 @@ the built-in registry are welcome.
   which kind.
 - **Overpass and Nominatim are shared public services.** A whole metro
   area is fine; a state is not. Cache results rather than re-fetching in a
-  loop, and respect the Nominatim usage policy for geocoding.
+  loop, and respect the Nominatim usage policy for geocoding. If the
+  default Overpass instance answers `HTTP 429`, wait a few minutes or
+  point `osmdata` at a mirror first:
+
+  ```r
+  osmdata::set_overpass_url("https://overpass.kumi.systems/api/interpreter")
+  ```
 - **Official data is licensed by each city.** The Denver layer is
   published under the Denver Open Data terms; `cl_sources()` carries the
   attribution string to reproduce.
