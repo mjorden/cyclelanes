@@ -21,8 +21,9 @@ recommended ones, where the source can distinguish them.}
 \code{\link[=cl_bbox]{cl_bbox()}} accepts) to limit the request. Applied server-side for
 ArcGIS sources and after reading for file sources.}
 
-\item{page_size}{Records per request for ArcGIS sources. Most services cap
-this at 1000 or 2000.}
+\item{page_size}{Records per request for ArcGIS sources. Capped at the
+layer's advertised \code{maxRecordCount} (typically 1000 or 2000); paging
+continues while the server reports \code{exceededTransferLimit}.}
 }
 \value{
 An \code{sf} in WGS84 with columns \code{source_id}, \code{name},
