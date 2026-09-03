@@ -4,7 +4,13 @@
 \alias{cl_bike_lanes}
 \title{Bike lanes for a place, fetched from OpenStreetMap and classified}
 \usage{
-cl_bike_lanes(place, drop_none = TRUE, keep_tags = FALSE, timeout = 180)
+cl_bike_lanes(
+  place,
+  drop_none = TRUE,
+  keep_tags = FALSE,
+  timeout = 180,
+  clip = TRUE
+)
 }
 \arguments{
 \item{place}{One of:
@@ -26,6 +32,14 @@ and \code{surface} survive from the input.}
 \item{timeout}{Overpass server timeout in seconds. City-scale queries can
 take a minute or more; the public Overpass instance rejects long-running
 queries, so keep \code{place} to a metro area or smaller.}
+
+\item{clip}{Overpass only takes a bounding box, and the box around a city
+usually spills into its neighbours. \code{TRUE} (the default) clips the result
+to the place's administrative boundary from \code{\link[=cl_boundary]{cl_boundary()}} when \code{place}
+is a name; ways crossing the boundary are cut at it. Pass an \code{sf}/\code{sfc}
+polygon to clip to your own boundary with any kind of \code{place}, or
+\code{FALSE} to keep the whole box. Ignored for bbox and \code{sf} inputs unless a
+polygon is supplied.}
 }
 \value{
 The classified \code{sf} described in \code{\link[=cl_classify]{cl_classify()}}, with the queried

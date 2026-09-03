@@ -60,14 +60,15 @@ cl_bbox <- function(place) {
 # osmdata::getbb(), which goes via httr2 and needs a recent 'curl' package
 # that older R installs cannot get as a binary.
 
-.nominatim_url <- function(place, base = "https://nominatim.openstreetmap.org") {
-  paste0(base, "/search?", .query_string(list(q = place, format = "json", limit = 10)))
+.nominatim_url <- function(place, base = "https://nominatim.openstreetmap.org",
+                           polygon = FALSE) {
+  params <- list(q = place, format = "json", limit = 10)
+  if (polygon) params$polygon_geojson <- 1
+  paste0(base, "/search?", .query_string(params))
 }
 
-.geocode_bbox <- function(place) {
-  url <- .nominatim_url(place)
+.nominatim_fetch <- function(url, place) {
   tmp <- tempfile(fileext = ".json")
-  on.exit(unlink(tmp), add = TRUE)
   ua <- sprintf("cyclelanes/%s (R package; https://github.com/mjorden/cyclelanes)",
                 as.character(utils::packageVersion("cyclelanes")))
   status <- tryCatch(
@@ -75,10 +76,94 @@ cl_bbox <- function(place) {
     error = function(e) conditionMessage(e)
   )
   if (!identical(as.integer(status), 0L)) {
+    unlink(tmp)
     rlang::abort(c(sprintf("Could not geocode place name \"%s\": Nominatim request failed.", place),
                    i = as.character(status)))
   }
-  bb <- .parse_nominatim(readLines(tmp, warn = FALSE, encoding = "UTF-8"))
+  on.exit(unlink(tmp), add = TRUE)
+  readLines(tmp, warn = FALSE, encoding = "UTF-8")
+}
+
+# Score a Nominatim result: administrative boundaries first, then populated
+# places, then anything else (a street of the same name, say).
+.nominatim_score <- function(r) {
+  cls <- r$class %||% ""
+  typ <- r$type %||% ""
+  if (cls == "boundary" && typ == "administrative") 3
+  else if (cls == "place") 2
+  else 1
+}
+
+#' Administrative boundary polygon for a place
+#'
+#' Geocodes `place` through Nominatim with `polygon_geojson=1` and returns
+#' the matching boundary as an `sf` polygon. Used by [cl_fetch_osm()] and
+#' [cl_bike_lanes()] to clip a bounding-box query to the place itself, so
+#' that "Denver, Colorado" does not include Lakewood and Aurora.
+#'
+#' @param place A place name, or an `sf`/`sfc` polygon which is returned
+#'   as-is (unioned, in WGS84) so callers can supply their own boundary.
+#' @return An `sf` with one row: `name` (Nominatim's display name), `osm_type`,
+#'   `osm_id`, and a `POLYGON`/`MULTIPOLYGON` geometry in EPSG:4326.
+#' @examples
+#' \dontrun{
+#' den <- cl_boundary("Denver, Colorado")
+#' plot(sf::st_geometry(den))
+#' }
+#' @export
+cl_boundary <- function(place) {
+  if (inherits(place, c("sf", "sfc"))) {
+    g <- sf::st_geometry(place)
+    if (is.na(sf::st_crs(g))) rlang::abort("`place` polygon has no CRS.")
+    g <- sf::st_union(sf::st_transform(g, 4326))
+    if (!all(sf::st_geometry_type(g) %in% c("POLYGON", "MULTIPOLYGON"))) {
+      rlang::abort("`place` must be a polygon to be used as a boundary.")
+    }
+    return(sf::st_sf(name = NA_character_, osm_type = NA_character_,
+                     osm_id = NA_character_, geometry = g))
+  }
+  if (!is.character(place) || length(place) != 1L) {
+    rlang::abort("`place` must be a place name or an sf/sfc polygon.")
+  }
+  json <- .nominatim_fetch(.nominatim_url(place, polygon = TRUE), place)
+  out <- .parse_nominatim_geojson(json)
+  if (is.null(out)) {
+    rlang::abort(sprintf("Nominatim returned no polygon boundary for \"%s\".", place))
+  }
+  out
+}
+
+# Best polygonal result of a polygon_geojson=1 response as a one-row sf,
+# or NULL when nothing usable came back.
+.parse_nominatim_geojson <- function(json) {
+  res <- tryCatch(jsonlite::fromJSON(paste(json, collapse = "\n"), simplifyVector = FALSE),
+                  error = function(e) NULL)
+  if (!length(res)) return(NULL)
+  poly <- vapply(res, function(r) {
+    isTRUE((r$geojson$type %||% "") %in% c("Polygon", "MultiPolygon"))
+  }, logical(1))
+  res <- res[poly]
+  if (!length(res)) return(NULL)
+  best <- res[[which.max(vapply(res, .nominatim_score, numeric(1)))]]
+
+  feature <- list(type = "Feature", properties = list(), geometry = best$geojson)
+  tmp <- tempfile(fileext = ".geojson")
+  on.exit(unlink(tmp), add = TRUE)
+  writeLines(jsonlite::toJSON(feature, auto_unbox = TRUE, digits = NA), tmp)
+  g <- tryCatch(sf::st_geometry(sf::st_read(tmp, quiet = TRUE)), error = function(e) NULL)
+  if (is.null(g) || length(g) != 1L) return(NULL)
+  sf::st_crs(g) <- 4326
+  sf::st_sf(
+    name = as.character(best$display_name %||% NA_character_),
+    osm_type = as.character(best$osm_type %||% NA_character_),
+    osm_id = as.character(best$osm_id %||% NA_character_),
+    geometry = g
+  )
+}
+
+.geocode_bbox <- function(place) {
+  json <- .nominatim_fetch(.nominatim_url(place), place)
+  bb <- .parse_nominatim(json)
   if (is.null(bb)) {
     rlang::abort(sprintf("Could not geocode place name \"%s\": Nominatim returned no results.", place))
   }
@@ -92,14 +177,7 @@ cl_bbox <- function(place) {
   res <- tryCatch(jsonlite::fromJSON(paste(json, collapse = "\n"), simplifyVector = FALSE),
                   error = function(e) NULL)
   if (!length(res)) return(NULL)
-  score <- vapply(res, function(r) {
-    cls <- r$class %||% ""
-    typ <- r$type %||% ""
-    if (cls == "boundary" && typ == "administrative") 3
-    else if (cls == "place") 2
-    else 1
-  }, numeric(1))
-  best <- res[[which.max(score)]]
+  best <- res[[which.max(vapply(res, .nominatim_score, numeric(1)))]]
   bb <- suppressWarnings(as.numeric(unlist(best$boundingbox)))
   if (length(bb) != 4L || anyNA(bb)) return(NULL)
   # Nominatim order is south, north, west, east

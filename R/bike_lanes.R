@@ -15,10 +15,12 @@
 #' cl_plot(denver)
 #' }
 #' @export
-cl_bike_lanes <- function(place, drop_none = TRUE, keep_tags = FALSE, timeout = 180) {
-  raw <- cl_fetch_osm(place, timeout = timeout)
+cl_bike_lanes <- function(place, drop_none = TRUE, keep_tags = FALSE, timeout = 180,
+                          clip = TRUE) {
+  raw <- cl_fetch_osm(place, timeout = timeout, clip = clip)
   out <- cl_classify(raw, drop_none = drop_none, keep_tags = keep_tags)
   attr(out, "cl_bbox") <- attr(raw, "cl_bbox")
+  attr(out, "cl_boundary") <- attr(raw, "cl_boundary")
   attr(out, "cl_fetched") <- attr(raw, "cl_fetched")
   attr(out, "cl_source") <- "openstreetmap"
   out

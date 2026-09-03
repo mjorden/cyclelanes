@@ -4,7 +4,7 @@
 \alias{cl_fetch_osm}
 \title{Fetch raw bicycle-related ways from OpenStreetMap}
 \usage{
-cl_fetch_osm(place, timeout = 180)
+cl_fetch_osm(place, timeout = 180, clip = TRUE)
 }
 \arguments{
 \item{place}{One of:
@@ -20,12 +20,21 @@ no bulk geocoding);
 \item{timeout}{Overpass server timeout in seconds. City-scale queries can
 take a minute or more; the public Overpass instance rejects long-running
 queries, so keep \code{place} to a metro area or smaller.}
+
+\item{clip}{Overpass only takes a bounding box, and the box around a city
+usually spills into its neighbours. \code{TRUE} (the default) clips the result
+to the place's administrative boundary from \code{\link[=cl_boundary]{cl_boundary()}} when \code{place}
+is a name; ways crossing the boundary are cut at it. Pass an \code{sf}/\code{sfc}
+polygon to clip to your own boundary with any kind of \code{place}, or
+\code{FALSE} to keep the whole box. Ignored for bbox and \code{sf} inputs unless a
+polygon is supplied.}
 }
 \value{
 An \code{sf} object of \code{LINESTRING}s in WGS84 (EPSG:4326) with the raw
 OSM tag columns present in the area. A zero-row \code{sf} if nothing matched.
-The WGS84 bounding box queried is stored in \code{attr(x, "cl_bbox")} and the
-fetch time in \code{attr(x, "cl_fetched")}.
+The WGS84 bounding box queried is stored in \code{attr(x, "cl_bbox")}, the
+clipping polygon (if any) in \code{attr(x, "cl_boundary")}, and the fetch
+time in \code{attr(x, "cl_fetched")}.
 }
 \description{
 Queries the Overpass API for every way inside \code{place} that carries a tag

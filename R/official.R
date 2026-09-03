@@ -174,9 +174,12 @@ cl_register_source <- function(city, url, class_field, crosswalk,
 #' @param city A key from [cl_sources()]. Default `"denver"`.
 #' @param existing_only Restrict to built facilities, dropping planned or
 #'   recommended ones, where the source can distinguish them.
-#' @param bbox Optional WGS84 `c(xmin, ymin, xmax, ymax)` (or anything
-#'   [cl_bbox()] accepts) to limit the request. Applied server-side for
-#'   ArcGIS sources and after reading for file sources.
+#' @param bbox Optional area to limit the request: WGS84
+#'   `c(xmin, ymin, xmax, ymax)`, anything [cl_bbox()] accepts, or an
+#'   `sf`/`sfc` **polygon** such as the output of [cl_boundary()]. The
+#'   bounding box is applied server-side for ArcGIS sources and after
+#'   reading for file sources; a polygon additionally clips the result to
+#'   its outline, so it matches a clipped [cl_bike_lanes()] layer.
 #' @param page_size Records per request for ArcGIS sources. Capped at the
 #'   layer's advertised `maxRecordCount` (typically 1000 or 2000); paging
 #'   continues while the server reports `exceededTransferLimit`.
@@ -194,6 +197,11 @@ cl_register_source <- function(city, url, class_field, crosswalk,
 cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL,
                               page_size = 2000) {
   src <- .get_source(city)
+  polygon <- NULL
+  if (inherits(bbox, c("sf", "sfc")) &&
+      all(sf::st_geometry_type(bbox) %in% c("POLYGON", "MULTIPOLYGON"))) {
+    polygon <- cl_boundary(bbox)
+  }
   bb <- if (!is.null(bbox)) cl_bbox(bbox) else NULL
 
   raw <- switch(
@@ -223,6 +231,8 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
   }
 
   out <- .standardise_official(raw, src)
+  if (!is.null(polygon)) out <- .clip_lines(out, polygon)
+  attr(out, "cl_boundary") <- polygon
   attr(out, "cl_source") <- src$city
   attr(out, "cl_attribution") <- src$attribution
   attr(out, "cl_fetched") <- Sys.time()

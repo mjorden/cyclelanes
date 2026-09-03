@@ -42,6 +42,20 @@ test_that("live: Denver official layer reads and standardises", {
   expect_equal(attr(den, "cl_source"), "denver")
 })
 
+test_that("live: cl_boundary returns Denver's city polygon and clipping shrinks the box", {
+  skip_unless_live("nominatim.openstreetmap.org")
+
+  b <- cl_boundary("Denver, Colorado")
+  expect_s3_class(b, "sf")
+  expect_true(sf::st_geometry_type(b) %in% c("POLYGON", "MULTIPOLYGON"))
+  expect_match(b$name, "Denver")
+  # the city polygon is well inside its own bounding box
+  bb <- cl_bbox("Denver, Colorado")
+  expect_lt(as.numeric(sf::st_area(b)),
+            as.numeric(sf::st_area(sf::st_as_sfc(sf::st_bbox(b)))))
+  expect_true(all(abs(as.numeric(sf::st_bbox(b)) - bb) < 0.01))
+})
+
 test_that("live: OSM and official layers compare", {
   skip_unless_live("overpass-api.de")
 
