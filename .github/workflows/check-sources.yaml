@@ -1,0 +1,55 @@
+# Weekly: compare every built-in source's crosswalk with the live class
+# values and open (or update) an issue when a city has added a class.
+# Kept separate from R-CMD-check so a city's outage never blocks a PR.
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+name: check-sources
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-sources:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      CYCLELANES_LIVE_TESTS: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Check crosswalks against live layers
+        id: check
+        run: Rscript inst/scripts/check-sources.R check-sources-report.md
+        continue-on-error: true
+
+      - name: Open or update a drift issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Crosswalk drift detected by check-sources"
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number -q '.[0].number')
+          body="check-sources-report.md"
+          printf '\n\n_Run: %s_\n' "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$body"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label data-source --body-file "$body"
+          fi
+
+      - name: Fail the job if drift was found
+        if: steps.check.outcome == 'failure'
+        run: exit 1

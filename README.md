@@ -146,8 +146,11 @@ cl_fetch_official("portland")
 `type = "arcgis"` pages through any ArcGIS REST layer as GeoJSON.
 `type = "file"` hands the location to `sf::st_read()`, so a GeoJSON URL, a
 zipped shapefile, or a local GeoPackage all work. Class values missing
-from the crosswalk are mapped to `none` with a warning naming them, so a
-stale crosswalk is loud rather than silent. Pull requests adding cities to
+from the crosswalk are mapped to `none` with a warning naming them and
+how many kilometres they carry, so a stale crosswalk is loud rather than
+silent; `cl_check_source("denver")` compares a crosswalk with the live
+class values on demand, and a weekly workflow does the same for every
+built-in source and opens an issue when a city adds a class. Pull requests adding cities to
 the built-in registry are welcome.
 
 ## Caveats
