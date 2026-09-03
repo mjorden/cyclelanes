@@ -154,15 +154,15 @@ test_that("bicycle roads fill sides that have nothing better", {
 
 test_that("drop_none removes non-facilities and keep_tags keeps raw columns", {
   w <- ways(
-    c(highway = "residential", cycleway = "lane", lit = "yes"),
-    c(highway = "residential", cycleway = "no", lit = "no")
+    c(highway = "residential", cycleway = "lane", note = "a"),
+    c(highway = "residential", cycleway = "no", note = "b")
   )
   out <- cl_classify(w, drop_none = TRUE)
   expect_equal(nrow(out), 1L)
-  expect_false("lit" %in% names(out))
+  expect_false("note" %in% names(out))
 
   out2 <- cl_classify(w, keep_tags = TRUE)
-  expect_true("lit" %in% names(out2))
+  expect_true("note" %in% names(out2))
   expect_equal(nrow(out2), 2L)
 })
 
@@ -255,4 +255,37 @@ test_that(".street_like_name handles NA, punctuation and directions", {
   f <- cyclelanes:::.street_like_name
   expect_equal(f(c(NA, "", "Main St.", "Elm Street SW", "Bear Creek Trail", "The Path")),
                c(FALSE, FALSE, TRUE, TRUE, FALSE, FALSE))
+})
+
+test_that("lane-quality attributes follow the facility side", {
+  out <- cl_classify(ways(
+    c(highway = "primary", cycleway = "lane", `cycleway:lane` = "advisory", `cycleway:width` = "1.5 m",
+      maxspeed = "30 mph", lanes = "4", lit = "yes"),
+    c(highway = "primary", `cycleway:left` = "lane", `cycleway:right` = "track",
+      `cycleway:right:separation` = "bollard", `cycleway:right:oneway` = "no",
+      `cycleway:left:lane` = "exclusive", `cycleway:right:width` = "5 ft", maxspeed = "50"),
+    c(highway = "residential", oneway = "yes", `oneway:bicycle` = "no", cycleway = "opposite_lane"),
+    c(highway = "cycleway", width = "3", oneway = "no", smoothness = "good"),
+    c(highway = "cycleway", oneway = "yes", maxspeed = "20")
+  ))
+  expect_equal(out$lane_kind, c("advisory", NA, NA, NA, NA))
+  expect_equal(out$separation, c(NA, "bollard", NA, NA, NA))
+  expect_equal(out$two_way, c(NA, TRUE, NA, TRUE, FALSE))
+  expect_equal(out$contraflow_allowed, c(FALSE, FALSE, TRUE, FALSE, FALSE))
+  expect_equal(out$width_m, c(1.5, 1.524, NA, 3, NA), tolerance = 1e-6)
+  expect_equal(out$road_maxspeed_kph, c(48.28032, 50, NA, NA, NA), tolerance = 1e-5)
+  expect_equal(out$road_lanes, c(4L, NA, NA, NA, NA))
+  expect_equal(out$lit, c("yes", NA, NA, NA, NA))
+  expect_equal(out$smoothness, c(NA, NA, NA, "good", NA))
+  # the right side carries the better facility, so its tags win
+  expect_equal(as.character(out$facility_type[2]), "protected_lane")
+})
+
+test_that("width and maxspeed parsers handle units and nonsense", {
+  w <- cyclelanes:::.parse_width_m
+  expect_equal(w(c("1.5", "1,5", "150 cm", "5 ft", "5'", "6'6\"", "wide", NA, "0", "80")),
+               c(1.5, 1.5, 1.5, 1.524, 1.524, 1.8288, NA, NA, NA, NA), tolerance = 1e-6)
+  m <- cyclelanes:::.parse_maxspeed_kph
+  expect_equal(m(c("30", "30 mph", "50 km/h", "walk", "none", NA, "signals")),
+               c(30, 48.28032, 50, 7, NA, NA, NA), tolerance = 1e-5)
 })

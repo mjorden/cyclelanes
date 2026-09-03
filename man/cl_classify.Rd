@@ -39,8 +39,26 @@ An \code{sf} with columns \code{osm_id}, \code{name}, \code{highway}, \code{faci
 \code{facility_left}, \code{facility_right} (factors over \code{\link[=cl_facility_levels]{cl_facility_levels()}}),
 \code{n_sides} (0-2, \code{NA} for separated paths), \code{contraflow},
 \code{shared_with_pedestrians}, \code{mapped_separately} (a facility drawn as its
-own way rather than as a tag on the road), \code{oneway}, \code{surface},
-\code{length_m}, and geometry.
+own way rather than as a tag on the road), the lane-quality attributes
+below, \code{oneway}, \code{length_m}, and geometry.
+
+Lane-quality attributes, all \code{NA} when untagged, taken from the side
+that carries \code{facility_type} (the explicit \code{cycleway:left}/\verb{:right}
+tag, else \code{cycleway:both}, else the bare \verb{cycleway:*} tag):
+\itemize{
+\item \code{lane_kind}: \code{exclusive}, \code{advisory} or \code{pictogram} from
+\verb{cycleway[:side]:lane};
+\item \code{separation}: what physically separates a track, from
+\verb{cycleway[:side]:separation} (\code{bollard}, \code{kerb}, \code{planter},
+\code{parking_lane}, \code{flex_post}, ...);
+\item \code{two_way}: \verb{cycleway[:side]:oneway=no}, or \code{oneway} not \code{yes} on a path;
+\item \code{contraflow_allowed}: \code{oneway:bicycle=no} on a one-way street;
+\item \code{width_m}: \verb{cycleway[:side]:width}, or \code{width} on a path, parsed to
+metres from \code{1.5}, \verb{1.5 m}, \verb{150 cm}, \verb{5 ft}, \verb{5'};
+\item \code{road_maxspeed_kph}: the parent road's \code{maxspeed} (mph converted);
+\item \code{road_lanes}: the parent road's \code{lanes};
+\item \code{lit}, \code{surface}, \code{smoothness}: copied through.
+}
 }
 \description{
 Normalises the OSM bicycle tagging on each way into the levels of
