@@ -398,12 +398,14 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
   base <- sub("/+$", "", layer_url)
   info <- .arcgis_layer_info(base)
   page_size <- max(1L, min(as.integer(page_size), info$max_record_count))
+  # Older ArcGIS Server releases only speak Esri JSON; GDAL reads that too.
+  fmt <- if (!nzchar(info$formats) || grepl("geojson", info$formats, ignore.case = TRUE)) "geojson" else "json"
 
   offset <- 0L
   pieces <- list()
   repeat {
     params <- list(
-      where = where, outFields = out_fields, outSR = 4326, f = "geojson",
+      where = where, outFields = out_fields, outSR = 4326, f = fmt,
       resultOffset = offset, resultRecordCount = page_size
     )
     if (!is.null(bbox)) {
@@ -419,7 +421,8 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
     .arcgis_check_error(head, sprintf("page at offset %d", offset))
     if (grepl("\"features\"\\s*:\\s*\\[\\s*\\]", head)) break
 
-    part <- sf::st_read(tmp, quiet = TRUE)
+    part <- sf::st_read(tmp, quiet = TRUE)   # GDAL auto-detects GeoJSON and Esri JSON
+    part <- .arcgis_to_wgs84(part, info$wkid)
     pieces[[length(pieces) + 1L]] <- part
 
     exceeded <- grepl("\"exceededTransferLimit\"\\s*:\\s*true", head)
@@ -440,6 +443,30 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
   out <- do.call(rbind, pieces)
   rownames(out) <- NULL
   out
+}
+
+# Some servers ignore outSR and answer in the layer's native CRS, or
+# GeoJSON with no CRS member at all. Make every page WGS84.
+.arcgis_to_wgs84 <- function(part, wkid) {
+  crs <- sf::st_crs(part)
+  if (is.na(crs)) {
+    sf::st_crs(part) <- if (!is.na(wkid)) as.integer(wkid) else 4326L
+    crs <- sf::st_crs(part)
+  }
+  # GeoJSON has no CRS member by spec, so GDAL labels it WGS84 even when the
+  # server ignored outSR and sent state-plane feet. Coordinates outside the
+  # lon/lat range give that away; relabel with the layer's CRS.
+  if (isTRUE(crs == sf::st_crs(4326)) && nrow(part) > 0 && !is.na(wkid) &&
+      !identical(as.integer(wkid), 4326L)) {
+    bb <- sf::st_bbox(part)
+    if (all(is.finite(bb)) &&
+        (any(abs(bb[c("xmin", "xmax")]) > 180) || any(abs(bb[c("ymin", "ymax")]) > 90))) {
+      sf::st_crs(part) <- as.integer(wkid)
+      crs <- sf::st_crs(part)
+    }
+  }
+  if (!isTRUE(crs == sf::st_crs(4326))) part <- sf::st_transform(part, 4326)
+  part
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
