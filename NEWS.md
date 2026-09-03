@@ -1,3 +1,30 @@
+# cyclelanes 0.5.0
+
+"Safety": reported crashes through the same registry pattern as
+facilities, with the denominator problem stated plainly.
+
+* `cl_fetch_crashes()` and a crash source registry
+  (`cl_register_crash_source()`, `cl_crash_sources()`) return crashes as
+  points with standard columns: date, a severity factor, who was involved
+  and -- separately -- who was hurt, intersection versus mid-block, light
+  and road condition. Denver Police's traffic-accidents layer (2013 to
+  present) is built in (#18, #19).
+* `cl_crash_join()` snaps each crash to the nearest facility within a
+  tolerance; `cl_crash_rates()` reports reported crashes and serious or
+  fatal crashes per **kilometre-year** by facility type, intersection and
+  mid-block on separate rows, honouring `install_year` and, with an
+  `exposure` column, per million bicycle-kilometres. `cl_plot(crashes = )`
+  overlays crashes sized by severity (#20).
+* `cl_fetch_fars()` reads NHTSA's FARS national releases (every US fatal
+  crash with coordinates since 2001, cached once per year) into the same
+  shape, and `cl_fetch_crashes()` falls back to it for a place with no
+  registered source (#21).
+* `denver_lodo` carries the downtown bicycle crashes for 2019-2025, and
+  the Denver vignette gains a safety section with the caveats before the
+  numbers (#22).
+* `cl_summary()` on a point layer reports counts and shares instead of
+  lengths.
+
 # cyclelanes 0.4.0
 
 "Richer classification and analysis": beyond the presence of a facility.
