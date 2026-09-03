@@ -150,7 +150,9 @@ cl_summary(crashes, by = "severity")
 ```
 
 Denver's police layer is built in; other cities register with
-`cl_register_crash_source()`. `cl_crash_join()` snaps each crash to the
+`cl_register_crash_source()`, and a place with no source at all falls
+back to NHTSA's FARS through `cl_fetch_fars()`, which has every US fatal
+crash with coordinates since 2001 (fatalities only). `cl_crash_join()` snaps each crash to the
 nearest facility and `cl_crash_rates()` reports reported crashes per
 **kilometre-year** by facility type, intersection and mid-block on
 separate rows, because intersection crashes attach to whichever facility

@@ -46,6 +46,7 @@ reference:
   desc: Reported crashes through the same registry pattern as facilities.
   contents:
   - cl_fetch_crashes
+  - cl_fetch_fars
   - cl_crash_join
   - cl_crash_rates
   - cl_crash_sources

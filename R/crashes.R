@@ -129,7 +129,10 @@ cl_register_crash_source <- function(city, url, fields, type = c("arcgis", "file
 #' *reported* crashes. Sources are revised continuously, so the fetch time
 #' in `attr(x, "cl_fetched")` is part of the result.
 #'
-#' @param city A key from [cl_crash_sources()]. Default `"denver"`.
+#' @param city A key from [cl_crash_sources()], default `"denver"`, or a
+#'   place name with no registered source, in which case the crashes come
+#'   from NHTSA's FARS through [cl_fetch_fars()] -- fatalities only, and
+#'   `years` is then required.
 #' @param years Optional integer vector of years to keep, e.g. `2019:2025`.
 #' @param bike_only Keep bicycle-involved crashes only (default). `FALSE`
 #'   returns every crash, which for a city is hundreds of thousands.
@@ -151,6 +154,16 @@ cl_register_crash_source <- function(city, url, fields, type = c("arcgis", "file
 #' @export
 cl_fetch_crashes <- function(city = "denver", years = NULL, bike_only = TRUE, bbox = NULL,
                              keep_raw = FALSE) {
+  key <- tolower(trimws(city))
+  if (!key %in% names(.all_crash_sources())) {
+    if (is.null(years)) {
+      rlang::abort(c(sprintf("No crash source is registered for \"%s\".", city),
+                     i = "Pass `years` to fall back to NHTSA FARS (fatal crashes only) for that place, or register a source with cl_register_crash_source()."))
+    }
+    rlang::inform(sprintf("No crash source registered for \"%s\"; using NHTSA FARS (fatal crashes only).", city))
+    area <- if (!is.null(bbox)) bbox else tryCatch(cl_boundary(city), error = function(e) cl_bbox(city))
+    return(cl_fetch_fars(years, bbox = area, bike_only = bike_only))
+  }
   src <- .get_crash_source(city)
   if (!is.null(years) && (!is.numeric(years) || any(years < 1900 | years > 2100))) {
     rlang::abort("`years` must be a vector of calendar years.")
