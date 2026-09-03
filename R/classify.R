@@ -6,7 +6,8 @@
 #'
 #' | level | meaning | typical OSM tagging |
 #' |---|---|---|
-#' | `separated_path` | off-street path or trail | `highway=cycleway`; `highway=path` + `bicycle=designated` |
+#' | `separated_path` | dedicated off-street cycleway or trail | `highway=cycleway` |
+#' | `shared_use_path` | off-street path shared with pedestrians | `highway=path/footway` + `bicycle=designated`; `highway=cycleway` + `segregated=no` or `foot=designated` |
 #' | `protected_lane` | on-street, physically separated (curb, bollards, parking) | `cycleway=track` |
 #' | `buffered_lane` | painted lane with a painted buffer | `cycleway=lane` + `cycleway:buffer=*` |
 #' | `painted_lane` | painted lane, no buffer | `cycleway=lane` |
@@ -14,13 +15,14 @@
 #' | `bus_bike_lane` | shared bus and bike lane | `cycleway=share_busway` |
 #' | `shared_lane` | sharrows / shared general-traffic lane | `cycleway=shared_lane` |
 #' | `shoulder` | rideable paved shoulder | `cycleway=shoulder` |
-#' | `none` | no facility | `cycleway=no`, unrecognised, or absent |
+#' | `none` | no facility | `cycleway=no`, unrecognised, or absent; sidewalks (`footway=sidewalk`) whatever their `bicycle` tag |
 #'
 #' @return A character vector of level names in protection order.
 #' @export
 cl_facility_levels <- function() {
-  c("separated_path", "protected_lane", "buffered_lane", "painted_lane",
-    "neighborhood_bikeway", "bus_bike_lane", "shared_lane", "shoulder", "none")
+  c("separated_path", "shared_use_path", "protected_lane", "buffered_lane",
+    "painted_lane", "neighborhood_bikeway", "bus_bike_lane", "shared_lane",
+    "shoulder", "none")
 }
 
 .facility_factor <- function(x) {
@@ -67,9 +69,13 @@ cl_facility_levels <- function() {
   "cycleway", "cycleway:left", "cycleway:right", "cycleway:both",
   "cycleway:buffer", "cycleway:left:buffer", "cycleway:right:buffer",
   "cycleway:both:buffer",
-  "bicycle", "bicycle_road", "cyclestreet", "foot", "segregated",
+  "bicycle", "bicycle_road", "cyclestreet", "foot", "footway", "segregated",
   "oneway", "surface"
 )
+
+# Surfaces that count as paved for `strict = TRUE`.
+.paved_surfaces <- c("paved", "asphalt", "concrete", "concrete:plates",
+                     "concrete:lanes", "paving_stones", "chipseal")
 
 .classify_out_cols <- c(
   "osm_id", "name", "highway",
@@ -85,9 +91,13 @@ cl_facility_levels <- function() {
 #'
 #' The rules, in order:
 #'
-#' 1. `highway=cycleway`, or `highway=path/footway/pedestrian/track/bridleway`
-#'    with `bicycle=designated`, is a `separated_path` for the whole way.
-#'    Side columns are `NA` for these.
+#' 1. `highway=cycleway` is a `separated_path` for the whole way, unless it
+#'    is shared with pedestrians (`segregated=no` or `foot=designated`), in
+#'    which case it is a `shared_use_path`. `highway=path`, `footway`,
+#'    `pedestrian`, `track` or `bridleway` with `bicycle=designated` is a
+#'    `shared_use_path`. A sidewalk (`footway=sidewalk` or `footway=crossing`)
+#'    is never a facility, whatever its `bicycle` tag. Side columns are `NA`
+#'    for paths.
 #' 2. Otherwise each side starts from `cycleway=*`, is overridden by
 #'    `cycleway:both=*`, and then by `cycleway:left=*` / `cycleway:right=*`.
 #' 3. A `painted_lane` side with a truthy `cycleway[:side]:buffer` tag
@@ -105,6 +115,11 @@ cl_facility_levels <- function() {
 #' @param keep_tags Keep every input column in addition to the standard
 #'   output columns. By default only `osm_id`, `name`, `highway`, `oneway`
 #'   and `surface` survive from the input.
+#' @param strict Also drop `shared_use_path` ways that are not
+#'   `highway=cycleway` and lack a paved `surface` tag (`paved`, `asphalt`,
+#'   `concrete`, `paving_stones`, ...). Park footways that a mapper tagged
+#'   bike-friendly are the bulk of what this removes; use it when you want
+#'   on-road-quality kilometres only.
 #' @return An `sf` with columns `osm_id`, `name`, `highway`, `facility_type`,
 #'   `facility_left`, `facility_right` (factors over [cl_facility_levels()]),
 #'   `n_sides` (0-2, `NA` for separated paths), `contraflow`,
@@ -124,18 +139,32 @@ cl_facility_levels <- function() {
 #' )
 #' cl_classify(ways)[, c("facility_type", "facility_left", "facility_right")]
 #' @export
-cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE) {
+cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE) {
   .stop_if_not_sf(x)
   geom_col <- attr(x, "sf_column")
   x <- .ensure_cols(x, .classify_tag_cols)
 
   hw <- .norm_tag(x$highway)
   bicycle <- .norm_tag(x$bicycle)
+  foot <- .norm_tag(x$foot)
+  footway <- .norm_tag(x$footway)
+  segregated <- .norm_tag(x$segregated)
+  surface <- .norm_tag(x$surface)
 
-  # 1. whole-way separated paths
-  is_path <- hw %in% "cycleway" |
+  # 1. whole-way paths: dedicated cycleways vs paths shared with pedestrians;
+  #    sidewalks are never facilities
+  is_sidewalk <- footway %in% c("sidewalk", "crossing")
+  is_cycleway <- hw %in% "cycleway"
+  is_mixed <- segregated %in% "no" | foot %in% "designated"
+  is_dedicated_path <- is_cycleway & !is_mixed
+  is_shared_path <- (is_cycleway & is_mixed) |
     (hw %in% c("path", "footway", "pedestrian", "track", "bridleway") &
-       bicycle %in% "designated")
+       bicycle %in% "designated" & !is_sidewalk)
+  if (isTRUE(strict)) {
+    unpaved <- !is_cycleway & !surface %in% .paved_surfaces
+    is_shared_path <- is_shared_path & !unpaved
+  }
+  is_path <- is_dedicated_path | is_shared_path
 
   # 2. per-side resolution
   base  <- .map_cycleway(x$cycleway)
@@ -162,7 +191,8 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE) {
   # 5. overall = more protected side; paths override
   lv <- cl_facility_levels()
   overall <- lv[pmin(match(fl, lv), match(fr, lv))]
-  overall[is_path] <- "separated_path"
+  overall[is_dedicated_path] <- "separated_path"
+  overall[is_shared_path] <- "shared_use_path"
   fl[is_path] <- NA_character_
   fr[is_path] <- NA_character_
 
@@ -174,11 +204,7 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE) {
     .norm_tag(x[["cycleway:right"]]) %in% .contraflow_values |
     .norm_tag(x[["cycleway:both"]]) %in% .contraflow_values
 
-  shared_peds <- is_path & (
-    .norm_tag(x$foot) %in% c("designated", "yes") |
-      .norm_tag(x$segregated) %in% "no" |
-      hw %in% c("path", "footway", "pedestrian")
-  )
+  shared_peds <- is_shared_path | (is_dedicated_path & foot %in% "yes")
 
   out <- x
   out$facility_type <- .facility_factor(overall)

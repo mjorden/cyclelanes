@@ -4,13 +4,14 @@
 
 # Denver's FACILITY_TYPE_EXISTING classes in the Denver Moves: Bikes 2025
 # inventory (layer TRANS_BIKEFACILITIES_L), mapped into the package taxonomy.
-# "Shared Sidewalk" and "Car-Free Street" are off-street from a cyclist's
-# point of view, so they land with the separated paths; "Shared Street" is
-# mixed traffic and lands with the shared lanes.
+# "Shared Sidewalk" and "Car-Free Street" are off-street but shared with
+# people on foot, so they are shared-use paths; "Trail" is the dedicated
+# off-street network; "Shared Street" is mixed traffic and lands with the
+# shared lanes.
 .denver_crosswalk <- c(
   "Trail"                = "separated_path",
-  "Shared Sidewalk"      = "separated_path",
-  "Car-Free Street"      = "separated_path",
+  "Shared Sidewalk"      = "shared_use_path",
+  "Car-Free Street"      = "shared_use_path",
   "Protected Bike Lane"  = "protected_lane",
   "Buffered Bike Lane"   = "buffered_lane",
   "Bike Lane"            = "painted_lane",
