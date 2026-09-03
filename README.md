@@ -182,7 +182,16 @@ the built-in registry are welcome.
   ```
 
   Cached results live in `cl_cache_dir()` for 30 days by default;
-  `cl_cache_clear()` empties it.
+  `cl_cache_clear()` empties it. For a whole city, or several, skip
+  Overpass entirely: `backend = "extract"` downloads the Geofabrik
+  extract for the region through `osmextract`, converts it once, and
+  reads the ways locally. The first download of a state is large and the
+  conversion takes minutes; after that every city in the region is
+  instant and offline.
+
+  ```r
+  denver <- cl_bike_lanes("Denver, Colorado", backend = "extract")
+  ```
 - **Official data is licensed by each city.** The Denver layer is
   published under the Denver Open Data terms; `cl_sources()` carries the
   attribution string to reproduce.

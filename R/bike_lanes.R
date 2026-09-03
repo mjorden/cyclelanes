@@ -6,7 +6,7 @@
 #' @inheritParams cl_fetch_osm
 #' @inheritParams cl_classify
 #' @param ... Passed to [cl_fetch_osm()]: `overpass_url`, `retries`, `tile`,
-#'   `cache`, `cache_dir`, `cache_max_age`.
+#'   `cache`, `cache_dir`, `cache_max_age`, `backend`, `extract_dir`.
 #' @return The classified `sf` described in [cl_classify()], with the queried
 #'   bounding box in `attr(x, "cl_bbox")`, the fetch time in
 #'   `attr(x, "cl_fetched")`, and `attr(x, "cl_source") == "openstreetmap"`.
@@ -24,6 +24,7 @@ cl_bike_lanes <- function(place, drop_none = TRUE, keep_tags = FALSE, strict = F
   attr(out, "cl_bbox") <- attr(raw, "cl_bbox")
   attr(out, "cl_boundary") <- attr(raw, "cl_boundary")
   attr(out, "cl_fetched") <- attr(raw, "cl_fetched")
+  attr(out, "cl_backend") <- attr(raw, "cl_backend")
   attr(out, "cl_source") <- "openstreetmap"
   out
 }

@@ -77,3 +77,16 @@ test_that("live: Austin official layer reads, sits in Austin, and has no unmappe
   expect_true(bb[["xmin"]] > -98 && bb[["xmax"]] < -97 && bb[["ymin"]] > 30 && bb[["ymax"]] < 31)
   expect_true(all(c("comfort", "line_type", "recommended_class") %in% names(atx)))
 })
+
+test_that("live: the extract backend reads a small region without Overpass", {
+  skip_unless_live("download.geofabrik.de")
+  skip_if_not_installed("osmextract")
+  # the District of Columbia extract is ~20 MB; a box around the Mall
+  dc <- c(-77.05, 38.885, -77.01, 38.905)
+  x <- cl_fetch_osm(dc, backend = "extract", clip = FALSE)
+  expect_s3_class(x, "sf")
+  expect_gt(nrow(x), 20)
+  expect_equal(attr(x, "cl_backend"), "extract")
+  lanes <- cl_classify(x, drop_none = TRUE)
+  expect_true(any(lanes$facility_type %in% c("protected_lane", "painted_lane", "separated_path")))
+})

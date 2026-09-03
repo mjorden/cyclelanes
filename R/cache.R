@@ -25,9 +25,9 @@ cl_cache_clear <- function(cache_dir = cl_cache_dir()) {
   invisible(length(files))
 }
 
-.overpass_cache_key <- function(bb, tile = NULL) {
+.overpass_cache_key <- function(bb, tile = NULL, backend = "overpass") {
   rlang::hash(list(bbox = round(unname(bb), 6), features = .cl_osm_features,
-                   tile = tile, version = 1L))
+                   tile = tile, backend = backend, version = 1L))
 }
 
 .cache_path <- function(key, cache_dir) {
