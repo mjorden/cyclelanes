@@ -325,11 +325,22 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
   meta <- tryCatch(jsonlite::fromJSON(paste(txt, collapse = "\n"), simplifyVector = FALSE),
                    error = function(e) NULL)
   if (is.null(meta)) rlang::abort(sprintf("Could not parse layer metadata from %s.", base))
+  fields <- meta$fields %||% list()
+  ext <- meta$extent
   list(
     name = meta$name %||% NA_character_,
     max_record_count = as.integer(meta$maxRecordCount %||% 1000L),
     supports_pagination = isTRUE(meta$advancedQueryCapabilities$supportsPagination),
-    formats = meta$supportedQueryFormats %||% ""
+    formats = meta$supportedQueryFormats %||% "",
+    geometry_type = meta$geometryType %||% NA_character_,
+    fields = data.frame(
+      name = vapply(fields, function(f) f$name %||% NA_character_, character(1)),
+      type = vapply(fields, function(f) sub("^esriFieldType", "", f$type %||% NA_character_), character(1)),
+      alias = vapply(fields, function(f) f$alias %||% NA_character_, character(1)),
+      stringsAsFactors = FALSE
+    ),
+    extent = if (is.null(ext)) NULL else c(xmin = ext$xmin, ymin = ext$ymin, xmax = ext$xmax, ymax = ext$ymax),
+    wkid = ext$spatialReference$latestWkid %||% ext$spatialReference$wkid %||% NA_integer_
   )
 }
 
