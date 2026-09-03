@@ -1,3 +1,44 @@
+# cyclelanes 0.3.0
+
+"More cities": adding a city is a fifteen-minute job, and a whole city no
+longer depends on Overpass.
+
+## Sources
+
+* Austin, Boulder and Seattle join Denver as built-in official sources
+  (#9). Boulder is a MapServer capped at 1000 rows per page in state-plane
+  feet; the reader handles it.
+* `cl_inspect_source()` prints a candidate layer's fields, the distinct
+  values of its text fields, and where its extent sits, so the class field
+  can be found and a wrong-city layer spotted before any crosswalk is
+  written (#7).
+* `cl_check_source()` compares a crosswalk with the live class values and
+  reports mapped, unmapped and stale entries; `cl_fetch_official()`'s
+  unmapped warning now says how many segments and kilometres are affected;
+  a weekly `check-sources` workflow opens an issue on drift (#8).
+* The ArcGIS reader falls back to Esri JSON for servers without GeoJSON
+  output, accepts MapServer layers, and transforms answers that ignore
+  `outSR` or arrive as CRS-less state-plane GeoJSON (#10).
+
+## Fetching
+
+* `cl_fetch_osm(backend = "extract")` reads the smallest Geofabrik extract
+  covering the area through `osmextract` instead of querying Overpass:
+  no rate limit, and every later place in the same region is local
+  (#32). The extract is matched on the clip boundary polygon, its size is
+  reported and capped by `max_extract_mb`, downloads persist under
+  `cl_cache_dir()/extracts`, and the download timeout is raised (#39).
+  Tag names GDAL writes with underscores (`cycleway_right`) are mapped
+  back to their OSM form (#42).
+* `.clip_lines()` no longer errors when a way only touches the boundary
+  at a point.
+
+## Docs
+
+* README and the Denver vignette carry the real city-wide numbers and
+  four figures from a run through the Colorado extract, clipped to the
+  city boundary.
+
 # cyclelanes 0.2.0
 
 "Trustworthy numbers": everything the first city-wide Denver run exposed.
