@@ -1,0 +1,19 @@
+group,max_speed_kph,max_lanes,lts,rule
+path,,,1,off-street path or physically protected lane
+bikeway,41,2,1,neighborhood bikeway on a two-lane street at or under 25 mph (41 km/h)
+bikeway,,,2,neighborhood bikeway on a faster or wider street
+lane,41,3,2,bike lane on a street at or under 25 mph (41 km/h) with at most 3 lanes
+lane,50,3,3,bike lane on a street at or under 30 mph (50 km/h) with at most 3 lanes
+lane,50,,3,bike lane on a street at or under 30 mph (50 km/h) with 4 or more lanes
+lane,,,4,bike lane on a street over 30 mph (50 km/h)
+bus,,,3,shared bus and bike lane
+mixed,33,2,1,mixed traffic on a two-lane street at or under 20 mph (33 km/h)
+mixed,41,3,2,mixed traffic at or under 25 mph (41 km/h) with at most 3 lanes
+mixed,41,,3,mixed traffic at or under 25 mph (41 km/h) with 4 or more lanes
+mixed,50,3,3,mixed traffic at or under 30 mph (50 km/h) with at most 3 lanes
+mixed,,,4,mixed traffic over 30 mph (50 km/h) or wide at 50 km/h
+none,33,2,1,no facility on a two-lane street at or under 20 mph (33 km/h)
+none,41,3,2,no facility at or under 25 mph (41 km/h) with at most 3 lanes
+none,41,,3,no facility at or under 25 mph (41 km/h) with 4 or more lanes
+none,50,3,3,no facility at or under 30 mph (50 km/h) with at most 3 lanes
+none,,,4,no facility over 30 mph (50 km/h) or wide at 50 km/h

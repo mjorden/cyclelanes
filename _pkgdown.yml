@@ -32,6 +32,8 @@ reference:
   contents:
   - cl_summary
   - cl_compare
+  - cl_lts
+  - cl_lts_palette
 - title: Plot
   contents:
   - cl_plot

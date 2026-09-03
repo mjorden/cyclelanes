@@ -28,8 +28,9 @@ cl_palette <- function() {
 #' @param title Optional plot title.
 #' @param linewidth Line width passed to [ggplot2::geom_sf()].
 #' @param colour Column to colour by: `"facility_type"` (default, using
-#'   [cl_palette()]) or `"type_match"` from a [cl_compare()] layer, which
-#'   draws agreeing segments green, disagreeing red, and unmatched grey.
+#'   [cl_palette()]); `"type_match"` from a [cl_compare()] layer, which
+#'   draws agreeing segments green, disagreeing red, and unmatched grey; or
+#'   `"lts"` from [cl_lts()], green to red for stress levels 1 to 4.
 #' @return A `ggplot` object.
 #' @examples
 #' if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -40,13 +41,14 @@ cl_palette <- function() {
 #' }
 #' @export
 cl_plot <- function(x, title = NULL, linewidth = 0.6,
-                    colour = c("facility_type", "type_match")) {
+                    colour = c("facility_type", "type_match", "lts")) {
   rlang::check_installed("ggplot2", reason = "for cl_plot()")
   .stop_if_not_sf(x)
   colour <- match.arg(colour)
   if (!colour %in% names(x)) {
     rlang::abort(sprintf("`x` has no `%s` column; %s first.", colour,
-                         if (colour == "facility_type") "classify it" else "run cl_compare()"))
+                         switch(colour, facility_type = "classify it",
+                                type_match = "run cl_compare()", lts = "run cl_lts()")))
   }
   base <- ggplot2::ggplot(x) +
     ggplot2::labs(title = title) +
@@ -59,6 +61,14 @@ cl_plot <- function(x, title = NULL, linewidth = 0.6,
     return(base +
       ggplot2::geom_sf(ggplot2::aes(colour = .data$facility_type), linewidth = linewidth, key_glyph = "path") +
       ggplot2::scale_colour_manual(values = cl_palette(), drop = TRUE, name = "Facility"))
+  }
+  if (colour == "lts") {
+    x$lts <- factor(as.character(x$lts), levels = c("1", "2", "3", "4"))
+    base$data <- x
+    return(base +
+      ggplot2::geom_sf(ggplot2::aes(colour = .data$lts), linewidth = linewidth, key_glyph = "path") +
+      ggplot2::scale_colour_manual(values = cl_lts_palette(), drop = FALSE,
+                                   name = "Level of Traffic Stress"))
   }
   x$agreement <- factor(
     ifelse(is.na(x$type_match), "unmatched", ifelse(x$type_match, "same type", "different type")),
