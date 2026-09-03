@@ -177,8 +177,9 @@ cl_register_source <- function(city, url, class_field, crosswalk,
 #' @param bbox Optional WGS84 `c(xmin, ymin, xmax, ymax)` (or anything
 #'   [cl_bbox()] accepts) to limit the request. Applied server-side for
 #'   ArcGIS sources and after reading for file sources.
-#' @param page_size Records per request for ArcGIS sources. Most services cap
-#'   this at 1000 or 2000.
+#' @param page_size Records per request for ArcGIS sources. Capped at the
+#'   layer's advertised `maxRecordCount` (typically 1000 or 2000); paging
+#'   continues while the server reports `exceededTransferLimit`.
 #' @return An `sf` in WGS84 with columns `source_id`, `name`,
 #'   `official_class` (the source's own label), `facility_type` (factor over
 #'   [cl_facility_levels()]), any `extra_fields` from the source definition,
@@ -275,10 +276,63 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
   out
 }
 
+# ArcGIS REST reader -------------------------------------------------------------
+
+# Download one URL to a temp file and return the path. Mocked in tests.
+.arcgis_get <- function(url) {
+  tmp <- tempfile(fileext = ".json")
+  status <- tryCatch(utils::download.file(url, tmp, quiet = TRUE, mode = "wb"),
+                     error = function(e) conditionMessage(e))
+  if (!identical(as.integer(status), 0L)) {
+    unlink(tmp)
+    rlang::abort(c(sprintf("Request to %s failed.", sub("[?].*$", "", url)),
+                   i = as.character(status)))
+  }
+  tmp
+}
+
+.arcgis_head <- function(path, n = 4000L) {
+  size <- file.info(path)$size
+  if (is.na(size) || size == 0) return("")
+  readChar(path, nchars = min(n, size), useBytes = TRUE)
+}
+
+.arcgis_check_error <- function(head, what) {
+  if (grepl("^\\s*\\{\\s*\"error\"", head)) {
+    rlang::abort(sprintf("ArcGIS service returned an error for %s: %s", what,
+                         substr(head, 1, 300)))
+  }
+  invisible(TRUE)
+}
+
+# Layer metadata: record cap and whether resultOffset paging is supported.
+.arcgis_layer_info <- function(base) {
+  tmp <- .arcgis_get(paste0(base, "?f=json"))
+  on.exit(unlink(tmp), add = TRUE)
+  txt <- readLines(tmp, warn = FALSE, encoding = "UTF-8")
+  .arcgis_check_error(paste(txt, collapse = ""), "layer metadata")
+  meta <- tryCatch(jsonlite::fromJSON(paste(txt, collapse = "\n"), simplifyVector = FALSE),
+                   error = function(e) NULL)
+  if (is.null(meta)) rlang::abort(sprintf("Could not parse layer metadata from %s.", base))
+  list(
+    name = meta$name %||% NA_character_,
+    max_record_count = as.integer(meta$maxRecordCount %||% 1000L),
+    supports_pagination = isTRUE(meta$advancedQueryCapabilities$supportsPagination),
+    formats = meta$supportedQueryFormats %||% ""
+  )
+}
+
 # Page through an ArcGIS REST layer's query endpoint as GeoJSON.
+#
+# The page size is capped at the server's maxRecordCount, and the loop
+# continues while the server says exceededTransferLimit or the page came back
+# full, so a server that caps below `page_size` no longer truncates silently.
 .arcgis_read <- function(layer_url, where = "1=1", bbox = NULL, page_size = 2000,
                          out_fields = "*") {
   base <- sub("/+$", "", layer_url)
+  info <- .arcgis_layer_info(base)
+  page_size <- max(1L, min(as.integer(page_size), info$max_record_count))
+
   offset <- 0L
   pieces <- list()
   repeat {
@@ -292,23 +346,26 @@ cl_fetch_official <- function(city = "denver", existing_only = TRUE, bbox = NULL
       params$inSR <- 4326
       params$spatialRel <- "esriSpatialRelIntersects"
     }
-    url <- paste0(base, "/query?", .query_string(params))
-    tmp <- tempfile(fileext = ".geojson")
+    tmp <- .arcgis_get(paste0(base, "/query?", .query_string(params)))
     on.exit(unlink(tmp), add = TRUE)
-    status <- tryCatch(utils::download.file(url, tmp, quiet = TRUE, mode = "wb"),
-                       error = function(e) -1L)
-    if (!identical(as.integer(status), 0L)) {
-      rlang::abort(sprintf("Request to %s failed.", base))
-    }
-    head <- readChar(tmp, nchars = min(2000L, file.info(tmp)$size), useBytes = TRUE)
-    if (grepl("^\\s*\\{\\s*\"error\"", head)) {
-      rlang::abort(sprintf("ArcGIS service returned an error: %s", substr(head, 1, 300)))
-    }
+
+    head <- .arcgis_head(tmp)
+    .arcgis_check_error(head, sprintf("page at offset %d", offset))
     if (grepl("\"features\"\\s*:\\s*\\[\\s*\\]", head)) break
 
     part <- sf::st_read(tmp, quiet = TRUE)
     pieces[[length(pieces) + 1L]] <- part
-    if (nrow(part) < page_size) break
+
+    exceeded <- grepl("\"exceededTransferLimit\"\\s*:\\s*true", head)
+    more <- exceeded || nrow(part) >= page_size
+    if (!more) break
+    if (!info$supports_pagination) {
+      rlang::abort(c(
+        sprintf("Layer %s returned a full page of %d features but does not support paging.",
+                base, page_size),
+        i = "Pass a smaller `bbox`, or a `where` clause, so the result fits in one page."
+      ))
+    }
     offset <- offset + page_size
   }
   if (!length(pieces)) {
