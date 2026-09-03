@@ -80,10 +80,19 @@ round(cmp$confusion, 1)
 ```
 
 Downtown, both sources agree almost everywhere that *something* exists,
-but they disagree on *what* for about half the length. The largest cell
-off the diagonal is usually the city's protected lanes that OSM mappers
-tagged as plain `cycleway=lane`, which is worth knowing before quoting
-either source's protected-lane mileage.
+and on *what* for roughly three quarters of the length. Most of the
+remaining disagreement is buffered versus painted lanes, which is often a
+tagging choice rather than a difference on the ground; `type_adjacent`
+counts those as near-misses.
+
+One convention mattered a lot here. Denver's mappers draw the downtown
+protected lanes as their own `highway=cycleway` ways beside the road,
+named after the street ("14th Street", "Lawrence Street"), rather than as
+a `cycleway=track` tag on the road. Read literally those are off-street
+trails, and before the classifier learned to recognise street-named
+cycleways as sidepaths, OSM showed 7 km of protected lane downtown
+against the city's 11 km and type agreement was near 50%. The rule is
+`sidepath_by_name`, on by default and documented in `?cl_classify`.
 
 ```{r, eval = has_ggplot2, fig.alt = "Map of the city's downtown segments coloured green where OpenStreetMap assigns the same facility type, red where it differs, grey where OSM has nothing nearby"}
 cl_plot(cmp$official, colour = "type_match",

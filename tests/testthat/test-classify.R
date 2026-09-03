@@ -205,3 +205,54 @@ test_that("cl_facility_levels is ordered most to least protected", {
   expect_lt(match("painted_lane", lv), match("shared_lane", lv))
   expect_setequal(names(cl_palette()), lv)
 })
+
+test_that("a cycleway drawn beside the road as its own way is a protected lane", {
+  out <- cl_classify(ways(
+    c(highway = "cycleway", is_sidepath = "yes"),
+    c(highway = "cycleway", cycleway = "track"),
+    c(highway = "cycleway", `cycleway:right` = "track"),
+    c(highway = "cycleway", is_sidepath = "no"),
+    c(highway = "cycleway", is_sidepath = "yes", foot = "designated"),
+    c(highway = "cycleway")
+  ))
+  expect_equal(as.character(out$facility_type),
+               c("protected_lane", "protected_lane", "protected_lane",
+                 "separated_path", "protected_lane", "separated_path"))
+  expect_equal(out$mapped_separately, c(TRUE, TRUE, TRUE, FALSE, TRUE, FALSE))
+  expect_true(all(is.na(out$facility_left)))
+  expect_true(all(is.na(out$n_sides)))
+  # a track tagged on a road is not "mapped separately"
+  road <- cl_classify(ways(c(highway = "primary", cycleway = "track")))
+  expect_false(road$mapped_separately)
+  expect_equal(as.character(road$facility_type), "protected_lane")
+})
+
+test_that("a cycleway named like a street is a sidepath; trails are not", {
+  out <- cl_classify(ways(
+    c(highway = "cycleway", name = "14th Street"),
+    c(highway = "cycleway", name = "Lawrence St"),
+    c(highway = "cycleway", name = "E 17th Avenue NE"),
+    c(highway = "cycleway", name = "Cherry Creek Trail"),
+    c(highway = "cycleway", name = "Platte River Greenway"),
+    c(highway = "cycleway", name = "Broadway Bike Path"),
+    c(highway = "cycleway", name = "Speer Boulevard Bike Lane"),
+    c(highway = "cycleway")
+  ))
+  expect_equal(as.character(out$facility_type),
+               c("protected_lane", "protected_lane", "protected_lane",
+                 "separated_path", "separated_path", "separated_path",
+                 "protected_lane", "separated_path"))
+  expect_equal(out$mapped_separately, c(TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE))
+
+  off <- cl_classify(ways(c(highway = "cycleway", name = "14th Street")), sidepath_by_name = FALSE)
+  expect_equal(as.character(off$facility_type), "separated_path")
+  # the name rule only applies to cycleways
+  road <- cl_classify(ways(c(highway = "residential", name = "14th Street")))
+  expect_equal(as.character(road$facility_type), "none")
+})
+
+test_that(".street_like_name handles NA, punctuation and directions", {
+  f <- cyclelanes:::.street_like_name
+  expect_equal(f(c(NA, "", "Main St.", "Elm Street SW", "Bear Creek Trail", "The Path")),
+               c(FALSE, FALSE, TRUE, TRUE, FALSE, FALSE))
+})

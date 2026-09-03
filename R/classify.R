@@ -70,17 +70,42 @@ cl_facility_levels <- function() {
   "cycleway:buffer", "cycleway:left:buffer", "cycleway:right:buffer",
   "cycleway:both:buffer",
   "bicycle", "bicycle_road", "cyclestreet", "foot", "footway", "segregated",
-  "oneway", "surface"
+  "is_sidepath", "oneway", "surface"
 )
 
 # Surfaces that count as paved for `strict = TRUE`.
 .paved_surfaces <- c("paved", "asphalt", "concrete", "concrete:plates",
                      "concrete:lanes", "paving_stones", "chipseal")
 
+# Does a way's name read like a street (and not like a trail)? Used to
+# recognise on-street lanes that mappers drew as their own highway=cycleway.
+.street_suffixes <- c("street", "st", "avenue", "ave", "boulevard", "blvd",
+                      "road", "rd", "drive", "dr", "way", "lane", "ln",
+                      "parkway", "pkwy", "place", "pl", "court", "ct",
+                      "highway", "hwy", "terrace", "ter", "circle", "cir")
+.trail_words <- c("trail", "path", "greenway", "bikeway", "bike path",
+                  "cycleway", "cycle path", "towpath", "promenade", "esplanade")
+
+.street_like_name <- function(name) {
+  n <- .norm_tag(name)
+  out <- rep(FALSE, length(n))
+  ok <- !is.na(n)
+  if (!any(ok)) return(out)
+  n <- gsub("[.,]", "", n[ok])
+  # strip a trailing direction ("15th street nw") and a "bike lane" qualifier
+  n <- sub("\\s+(n|s|e|w|ne|nw|se|sw|north|south|east|west)$", "", n)
+  n <- sub("\\s+(bike lane|cycle track|cycle lane|bike track|protected bike lane)$", "", n)
+  last <- sub("^.*\\s", "", n)
+  trailish <- Reduce(`|`, lapply(.trail_words, function(w) grepl(paste0("\\b", w, "\\b"), n)))
+  out[ok] <- last %in% .street_suffixes & !trailish
+  out
+}
+
 .classify_out_cols <- c(
   "osm_id", "name", "highway",
   "facility_type", "facility_left", "facility_right", "n_sides",
-  "contraflow", "shared_with_pedestrians", "oneway", "surface", "length_m"
+  "contraflow", "shared_with_pedestrians", "mapped_separately",
+  "oneway", "surface", "length_m"
 )
 
 #' Classify OpenStreetMap ways into the facility taxonomy
@@ -98,6 +123,16 @@ cl_facility_levels <- function() {
 #'    `shared_use_path`. A sidewalk (`footway=sidewalk` or `footway=crossing`)
 #'    is never a facility, whatever its `bicycle` tag. Side columns are `NA`
 #'    for paths.
+#'    A `highway=cycleway` that is really an on-street lane drawn as its own
+#'    way -- tagged `is_sidepath=yes`, or carrying `cycleway=track` /
+#'    `cycleway:*=track` -- is a `protected_lane` with
+#'    `mapped_separately = TRUE`, so it lines up with a city inventory that
+#'    files it under protected lanes rather than trails. With
+#'    `sidepath_by_name = TRUE` (the default) a `highway=cycleway` whose
+#'    `name` reads like a street ("14th Street", "Lawrence St") counts too,
+#'    because mappers who draw a lane as its own way usually name it after
+#'    the street, while trails are named as trails. It is a heuristic; turn
+#'    it off where cycleways are routinely named after streets.
 #' 2. Otherwise each side starts from `cycleway=*`, is overridden by
 #'    `cycleway:both=*`, and then by `cycleway:left=*` / `cycleway:right=*`.
 #' 3. A `painted_lane` side with a truthy `cycleway[:side]:buffer` tag
@@ -120,10 +155,17 @@ cl_facility_levels <- function() {
 #'   `concrete`, `paving_stones`, ...). Park footways that a mapper tagged
 #'   bike-friendly are the bulk of what this removes; use it when you want
 #'   on-road-quality kilometres only.
+#' @param sidepath_by_name Treat a `highway=cycleway` named like a street
+#'   (a suffix such as Street, St, Avenue, Ave, Boulevard, Blvd, Road, Rd,
+#'   Drive, Dr, Way, Lane, Ln, Parkway, Pkwy, Place, Pl, Court, Ct, and not
+#'   Trail, Path, Greenway, Bikeway) as a separately mapped on-street lane,
+#'   i.e. a `protected_lane`. See rule 1.
 #' @return An `sf` with columns `osm_id`, `name`, `highway`, `facility_type`,
 #'   `facility_left`, `facility_right` (factors over [cl_facility_levels()]),
 #'   `n_sides` (0-2, `NA` for separated paths), `contraflow`,
-#'   `shared_with_pedestrians`, `oneway`, `surface`, `length_m`, and geometry.
+#'   `shared_with_pedestrians`, `mapped_separately` (a facility drawn as its
+#'   own way rather than as a tag on the road), `oneway`, `surface`,
+#'   `length_m`, and geometry.
 #' @examples
 #' ways <- sf::st_sf(
 #'   highway = c("residential", "cycleway", "primary"),
@@ -139,7 +181,8 @@ cl_facility_levels <- function() {
 #' )
 #' cl_classify(ways)[, c("facility_type", "facility_left", "facility_right")]
 #' @export
-cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE) {
+cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE,
+                        sidepath_by_name = TRUE) {
   .stop_if_not_sf(x)
   geom_col <- attr(x, "sf_column")
   x <- .ensure_cols(x, .classify_tag_cols)
@@ -155,16 +198,23 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
   #    sidewalks are never facilities
   is_sidewalk <- footway %in% c("sidewalk", "crossing")
   is_cycleway <- hw %in% "cycleway"
+  # an on-street protected lane drawn as its own way beside the road
+  track_tag <- .map_cycleway(x$cycleway) %in% "protected_lane" |
+    .map_cycleway(x[["cycleway:both"]]) %in% "protected_lane" |
+    .map_cycleway(x[["cycleway:left"]]) %in% "protected_lane" |
+    .map_cycleway(x[["cycleway:right"]]) %in% "protected_lane"
+  name_says_street <- if (isTRUE(sidepath_by_name)) .street_like_name(x$name) else rep(FALSE, nrow(x))
+  is_sidepath <- is_cycleway & (.tag_truthy(x$is_sidepath) | track_tag | name_says_street)
   is_mixed <- segregated %in% "no" | foot %in% "designated"
-  is_dedicated_path <- is_cycleway & !is_mixed
-  is_shared_path <- (is_cycleway & is_mixed) |
+  is_dedicated_path <- is_cycleway & !is_mixed & !is_sidepath
+  is_shared_path <- (is_cycleway & is_mixed & !is_sidepath) |
     (hw %in% c("path", "footway", "pedestrian", "track", "bridleway") &
        bicycle %in% "designated" & !is_sidewalk)
   if (isTRUE(strict)) {
     unpaved <- !is_cycleway & !surface %in% .paved_surfaces
     is_shared_path <- is_shared_path & !unpaved
   }
-  is_path <- is_dedicated_path | is_shared_path
+  is_path <- is_dedicated_path | is_shared_path | is_sidepath
 
   # 2. per-side resolution
   base  <- .map_cycleway(x$cycleway)
@@ -193,6 +243,7 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
   overall <- lv[pmin(match(fl, lv), match(fr, lv))]
   overall[is_dedicated_path] <- "separated_path"
   overall[is_shared_path] <- "shared_use_path"
+  overall[is_sidepath] <- "protected_lane"
   fl[is_path] <- NA_character_
   fr[is_path] <- NA_character_
 
@@ -213,6 +264,7 @@ cl_classify <- function(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
   out$n_sides <- n_sides
   out$contraflow <- contraflow
   out$shared_with_pedestrians <- shared_peds
+  out$mapped_separately <- is_sidepath
   out$length_m <- .length_m(out)
 
   keep <- .classify_out_cols
