@@ -111,7 +111,7 @@ print.cl_source_check <- function(x, ...) {
   n_st <- sum(x$status == "stale")
   cat(sprintf("<cl_source_check> %s: %s\n", city,
               if (isTRUE(attr(x, "ok"))) "crosswalk covers every live class" else
-                sprintf("%d unmapped class value%s", n_un, if (n_un == 1) "" else "es")))
+                sprintf("%d unmapped class %s", n_un, if (n_un == 1) "value" else "values")))
   if (n_st) cat(sprintf("  %d crosswalk key%s no longer occur%s in the data\n",
                         n_st, if (n_st == 1) "" else "s", if (n_st == 1) "s" else ""))
   d <- as.data.frame(unclass(x), stringsAsFactors = FALSE)
