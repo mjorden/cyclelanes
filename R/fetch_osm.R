@@ -292,6 +292,7 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   on.exit(options(old), add = TRUE)
   raw <- .extract_query(m$url, poly, extract_dir)
   if (is.null(raw) || nrow(raw) == 0L) return(.empty_osm_sf())
+  raw <- .restore_tag_names(raw)
   raw <- .ensure_cols(raw, c("osm_id", "highway", .cl_extract_tags))
   keep <- !is.na(raw$highway) & (
     .norm_tag(raw$highway) %in% "cycleway" |
@@ -320,4 +321,14 @@ cl_fetch_osm <- function(place, timeout = 180, clip = TRUE, overpass_url = NULL,
   osmextract::oe_read(path, layer = "lines", extra_tags = .cl_extract_tags,
                       boundary = poly, boundary_type = "clipsrc",
                       download_directory = extract_dir, quiet = TRUE)
+}
+
+# GDAL's OSM driver writes a tag such as cycleway:right as a column named
+# cycleway_right. Put the colons back so the classifier sees the tags.
+.restore_tag_names <- function(x) {
+  for (tag in grep(":", .cl_extract_tags, fixed = TRUE, value = TRUE)) {
+    alt <- gsub(":", "_", tag, fixed = TRUE)
+    if (alt %in% names(x) && !tag %in% names(x)) names(x)[names(x) == alt] <- tag
+  }
+  x
 }
