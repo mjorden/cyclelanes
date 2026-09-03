@@ -28,22 +28,69 @@ test_that("highway=cycleway is a separated path with NA sides", {
   expect_true(is.na(out$n_sides))
 })
 
-test_that("designated paths are separated paths; permissive footways are not", {
-  expect_equal(ft(c(highway = "path", bicycle = "designated")), "separated_path")
-  expect_equal(ft(c(highway = "footway", bicycle = "designated")), "separated_path")
+test_that("designated paths are shared-use paths; permissive footways are not facilities", {
+  expect_equal(ft(c(highway = "path", bicycle = "designated")), "shared_use_path")
+  expect_equal(ft(c(highway = "footway", bicycle = "designated")), "shared_use_path")
+  expect_equal(ft(c(highway = "pedestrian", bicycle = "designated")), "shared_use_path")
   expect_equal(ft(c(highway = "footway", bicycle = "yes")), "none")
   expect_equal(ft(c(highway = "residential", bicycle = "designated")), "none")
 })
 
-test_that("shared_with_pedestrians is flagged on mixed-use paths only", {
+test_that("a cycleway shared with pedestrians is a shared-use path, a dedicated one is not", {
   out <- cl_classify(ways(
     c(highway = "cycleway"),
+    c(highway = "cycleway", foot = "designated"),
+    c(highway = "cycleway", segregated = "no"),
+    c(highway = "cycleway", segregated = "yes", foot = "yes"),
+    c(highway = "cycleway", foot = "no")
+  ))
+  expect_equal(as.character(out$facility_type),
+               c("separated_path", "shared_use_path", "shared_use_path",
+                 "separated_path", "separated_path"))
+  expect_true(all(is.na(out$facility_left)))
+  expect_true(all(is.na(out$n_sides)))
+})
+
+test_that("sidewalks are never facilities, whatever their bicycle tag", {
+  out <- cl_classify(ways(
+    c(highway = "footway", footway = "sidewalk", bicycle = "designated"),
+    c(highway = "footway", footway = "crossing", bicycle = "designated"),
+    c(highway = "footway", footway = "sidewalk", bicycle = "yes"),
+    c(highway = "footway", bicycle = "designated")
+  ))
+  expect_equal(as.character(out$facility_type),
+               c("none", "none", "none", "shared_use_path"))
+})
+
+test_that("strict drops unpaved or unsurfaced shared paths but never cycleways", {
+  w <- ways(
+    c(highway = "path", bicycle = "designated"),                        # no surface
+    c(highway = "path", bicycle = "designated", surface = "dirt"),
+    c(highway = "path", bicycle = "designated", surface = "asphalt"),
+    c(highway = "footway", bicycle = "designated", surface = "paving_stones"),
+    c(highway = "cycleway", foot = "designated"),                       # shared cycleway, no surface
+    c(highway = "cycleway", surface = "gravel")
+  )
+  lax <- cl_classify(w)
+  expect_equal(as.character(lax$facility_type),
+               c("shared_use_path", "shared_use_path", "shared_use_path",
+                 "shared_use_path", "shared_use_path", "separated_path"))
+  strict <- cl_classify(w, strict = TRUE)
+  expect_equal(as.character(strict$facility_type),
+               c("none", "none", "shared_use_path", "shared_use_path",
+                 "shared_use_path", "separated_path"))
+})
+
+test_that("shared_with_pedestrians follows the path kind and permissive foot access", {
+  out <- cl_classify(ways(
+    c(highway = "cycleway"),
+    c(highway = "cycleway", foot = "yes"),
     c(highway = "cycleway", foot = "designated"),
     c(highway = "cycleway", segregated = "no"),
     c(highway = "path", bicycle = "designated"),
     c(highway = "residential", cycleway = "lane", foot = "yes")
   ))
-  expect_equal(out$shared_with_pedestrians, c(FALSE, TRUE, TRUE, TRUE, FALSE))
+  expect_equal(out$shared_with_pedestrians, c(FALSE, TRUE, TRUE, TRUE, TRUE, FALSE))
 })
 
 test_that("left/right/both tags resolve per side and overall takes the better side", {
@@ -152,6 +199,8 @@ test_that("cl_facility_levels is ordered most to least protected", {
   lv <- cl_facility_levels()
   expect_equal(lv[1], "separated_path")
   expect_equal(lv[length(lv)], "none")
+  expect_lt(match("separated_path", lv), match("shared_use_path", lv))
+  expect_lt(match("shared_use_path", lv), match("protected_lane", lv))
   expect_lt(match("protected_lane", lv), match("painted_lane", lv))
   expect_lt(match("painted_lane", lv), match("shared_lane", lv))
   expect_setequal(names(cl_palette()), lv)

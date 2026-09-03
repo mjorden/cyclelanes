@@ -17,7 +17,8 @@ ordered from most to least physically separated from motor traffic:
 \details{
 \tabular{lll}{
    level \tab meaning \tab typical OSM tagging \cr
-   \code{separated_path} \tab off-street path or trail \tab \code{highway=cycleway}; \code{highway=path} + \code{bicycle=designated} \cr
+   \code{separated_path} \tab dedicated off-street cycleway or trail \tab \code{highway=cycleway} \cr
+   \code{shared_use_path} \tab off-street path shared with pedestrians \tab \code{highway=path/footway} + \code{bicycle=designated}; \code{highway=cycleway} + \code{segregated=no} or \code{foot=designated} \cr
    \code{protected_lane} \tab on-street, physically separated (curb, bollards, parking) \tab \code{cycleway=track} \cr
    \code{buffered_lane} \tab painted lane with a painted buffer \tab \code{cycleway=lane} + \verb{cycleway:buffer=*} \cr
    \code{painted_lane} \tab painted lane, no buffer \tab \code{cycleway=lane} \cr
@@ -25,6 +26,6 @@ ordered from most to least physically separated from motor traffic:
    \code{bus_bike_lane} \tab shared bus and bike lane \tab \code{cycleway=share_busway} \cr
    \code{shared_lane} \tab sharrows / shared general-traffic lane \tab \code{cycleway=shared_lane} \cr
    \code{shoulder} \tab rideable paved shoulder \tab \code{cycleway=shoulder} \cr
-   \code{none} \tab no facility \tab \code{cycleway=no}, unrecognised, or absent \cr
+   \code{none} \tab no facility \tab \code{cycleway=no}, unrecognised, or absent; sidewalks (\code{footway=sidewalk}) whatever their \code{bicycle} tag \cr
 }
 }

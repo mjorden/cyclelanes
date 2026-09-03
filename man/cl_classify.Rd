@@ -4,7 +4,7 @@
 \alias{cl_classify}
 \title{Classify OpenStreetMap ways into the facility taxonomy}
 \usage{
-cl_classify(x, drop_none = FALSE, keep_tags = FALSE)
+cl_classify(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
 }
 \arguments{
 \item{x}{An \code{sf} object from \code{\link[=cl_fetch_osm]{cl_fetch_osm()}}, or any \code{sf} of ways with
@@ -15,6 +15,12 @@ OSM-style tag columns. Missing tag columns are treated as absent tags.}
 \item{keep_tags}{Keep every input column in addition to the standard
 output columns. By default only \code{osm_id}, \code{name}, \code{highway}, \code{oneway}
 and \code{surface} survive from the input.}
+
+\item{strict}{Also drop \code{shared_use_path} ways that are not
+\code{highway=cycleway} and lack a paved \code{surface} tag (\code{paved}, \code{asphalt},
+\code{concrete}, \code{paving_stones}, ...). Park footways that a mapper tagged
+bike-friendly are the bulk of what this removes; use it when you want
+on-road-quality kilometres only.}
 }
 \value{
 An \code{sf} with columns \code{osm_id}, \code{name}, \code{highway}, \code{facility_type},
@@ -30,9 +36,13 @@ gets a left, a right, and an overall classification.
 \details{
 The rules, in order:
 \enumerate{
-\item \code{highway=cycleway}, or \code{highway=path/footway/pedestrian/track/bridleway}
-with \code{bicycle=designated}, is a \code{separated_path} for the whole way.
-Side columns are \code{NA} for these.
+\item \code{highway=cycleway} is a \code{separated_path} for the whole way, unless it
+is shared with pedestrians (\code{segregated=no} or \code{foot=designated}), in
+which case it is a \code{shared_use_path}. \code{highway=path}, \code{footway},
+\code{pedestrian}, \code{track} or \code{bridleway} with \code{bicycle=designated} is a
+\code{shared_use_path}. A sidewalk (\code{footway=sidewalk} or \code{footway=crossing})
+is never a facility, whatever its \code{bicycle} tag. Side columns are \code{NA}
+for paths.
 \item Otherwise each side starts from \verb{cycleway=*}, is overridden by
 \verb{cycleway:both=*}, and then by \verb{cycleway:left=*} / \verb{cycleway:right=*}.
 \item A \code{painted_lane} side with a truthy \verb{cycleway[:side]:buffer} tag

@@ -72,7 +72,8 @@ from most to least physically separated from motor traffic:
 
 | level | meaning | typical OSM tagging |
 |---|---|---|
-| `separated_path` | off-street path or trail | `highway=cycleway`; `highway=path` + `bicycle=designated` |
+| `separated_path` | dedicated off-street cycleway or trail | `highway=cycleway` |
+| `shared_use_path` | off-street path shared with pedestrians | `highway=path/footway` + `bicycle=designated`; `highway=cycleway` + `segregated=no` |
 | `protected_lane` | on-street, physically separated | `cycleway=track` |
 | `buffered_lane` | painted lane with painted buffer | `cycleway=lane` + `cycleway:buffer=*` |
 | `painted_lane` | painted lane | `cycleway=lane` |
@@ -87,7 +88,10 @@ For OSM, `cl_classify()` resolves `cycleway`, `cycleway:both`,
 `facility_right`, upgrades painted lanes with a buffer tag, flags
 contraflow lanes, and reports the more protected side as `facility_type`.
 `cycleway=separate` (the lane is mapped as its own way) yields `none` so
-nothing is counted twice.
+nothing is counted twice. Sidewalks (`footway=sidewalk`) are never
+facilities, whatever their `bicycle` tag, and `strict = TRUE` additionally
+drops shared-use paths with no paved surface tag, which removes most of
+the park footways that mappers mark bike-friendly.
 
 ## Adding a city
 

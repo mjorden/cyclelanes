@@ -8,6 +8,7 @@
 cl_palette <- function() {
   c(
     separated_path       = "#1b7837",
+    shared_use_path      = "#7fbc41",
     protected_lane       = "#2166ac",
     buffered_lane        = "#4393c3",
     painted_lane         = "#92c5de",
