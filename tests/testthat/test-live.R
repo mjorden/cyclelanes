@@ -106,3 +106,13 @@ test_that("live: Seattle and Boulder layers read, sit in the right city, and hav
   expect_true(bb[["xmin"]] > -105.4 && bb[["xmax"]] < -105.1 && bb[["ymin"]] > 39.9 && bb[["ymax"]] < 40.1)
   expect_true(all(c("street_class", "buffered") %in% names(bou)))
 })
+
+test_that("live: Denver bicycle crashes read for one year in the downtown box", {
+  skip_unless_live("services1.arcgis.com")
+  x <- cl_fetch_crashes("denver", years = 2023, bbox = c(-105.02, 39.73, -104.97, 39.77))
+  expect_gt(nrow(x), 5)
+  expect_true(all(x$year == 2023))
+  expect_true(all(x$bicycle))
+  expect_true(all(as.character(x$severity) %in% c("fatal", "serious", "minor", "none", "unknown")))
+  expect_true(any(x$location_type == "intersection"))
+})

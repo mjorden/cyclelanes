@@ -42,6 +42,14 @@ reference:
   - cl_plot
   - cl_map
   - cl_palette
+- title: Safety
+  desc: Reported crashes through the same registry pattern as facilities.
+  contents:
+  - cl_fetch_crashes
+  - cl_crash_join
+  - cl_crash_rates
+  - cl_crash_sources
+  - cl_register_crash_source
 - title: Data
   contents:
   - denver_lodo

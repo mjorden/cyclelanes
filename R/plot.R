@@ -29,6 +29,8 @@ cl_palette <- function() {
 #' @param linewidth Line width passed to [ggplot2::geom_sf()].
 #' @param n_components How many components to colour when
 #'   `colour = "component"`.
+#' @param crashes Optional `sf` of points from [cl_fetch_crashes()] to draw
+#'   over the facilities, sized by severity.
 #' @param colour Column to colour by: `"facility_type"` (default, using
 #'   [cl_palette()]); `"type_match"` from a [cl_compare()] layer, which
 #'   draws agreeing segments green, disagreeing red, and unmatched grey; or
@@ -46,7 +48,7 @@ cl_palette <- function() {
 #' @export
 cl_plot <- function(x, title = NULL, linewidth = 0.6,
                     colour = c("facility_type", "type_match", "lts", "component"),
-                    n_components = 8) {
+                    n_components = 8, crashes = NULL) {
   rlang::check_installed("ggplot2", reason = "for cl_plot()")
   .stop_if_not_sf(x)
   colour <- match.arg(colour)
@@ -61,6 +63,16 @@ cl_plot <- function(x, title = NULL, linewidth = 0.6,
     ggplot2::theme_minimal() +
     ggplot2::theme(panel.grid = ggplot2::element_blank(),
                    axis.text = ggplot2::element_blank())
+  if (!is.null(crashes)) {
+    .stop_if_not_sf(crashes, "crashes")
+    cr <- sf::st_transform(crashes, sf::st_crs(x))
+    sev <- if ("severity" %in% names(cr)) as.character(cr$severity) else rep("unknown", nrow(cr))
+    cr$crash_size <- ifelse(sev == "fatal", 3, ifelse(sev == "serious", 2, 1))
+    base <- base +
+      ggplot2::geom_sf(data = cr, ggplot2::aes(size = .data$crash_size),
+                       colour = "#000000", alpha = 0.45, shape = 16, inherit.aes = FALSE) +
+      ggplot2::scale_size_identity()
+  }
   if (colour == "facility_type") {
     x$facility_type <- .facility_factor(x$facility_type)
     base$data <- x

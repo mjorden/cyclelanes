@@ -15,7 +15,8 @@ official Denver layer \code{c("facility_type", "status")} is informative.}
 \value{
 A data frame with \code{n_segments}, \code{length_km}, \code{length_mi}, and
 \code{share} (fraction of total length) per group. Empty groups of a factor
-are omitted.
+are omitted. For a point layer such as \code{\link[=cl_fetch_crashes]{cl_fetch_crashes()}} output the
+columns are \code{n} and \code{share} (fraction of the count).
 }
 \description{
 Works on either layer: the OpenStreetMap output of \code{\link[=cl_bike_lanes]{cl_bike_lanes()}} or
