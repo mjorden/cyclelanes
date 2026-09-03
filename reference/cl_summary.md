@@ -33,9 +33,9 @@ omitted.
 ``` r
 cl_summary(cl_classify(denver_lodo$osm, drop_none = TRUE))
 #>     facility_type n_segments length_km length_mi      share
-#> 1  separated_path        142 11.217631 6.9703105 0.40736692
+#> 1  separated_path         90  5.457209 3.3909516 0.19817790
 #> 2 shared_use_path         53  2.292066 1.4242231 0.08323609
-#> 3  protected_lane        110  6.965764 4.3283237 0.25296088
+#> 3  protected_lane        162 12.726186 7.9076827 0.46214990
 #> 4   buffered_lane         18  1.690104 1.0501815 0.06137591
 #> 5    painted_lane         66  4.070209 2.5291097 0.14780915
 #> 6     shared_lane         24  1.301149 0.8084959 0.04725105

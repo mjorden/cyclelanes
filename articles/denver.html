@@ -108,10 +108,10 @@ a facility (a sidewalk with <code>bicycle=designated</code>, a road with
 <tbody>
 <tr class="odd">
 <td align="left">separated_path</td>
-<td align="right">142</td>
-<td align="right">11.22</td>
-<td align="right">6.97</td>
-<td align="right">0.41</td>
+<td align="right">90</td>
+<td align="right">5.46</td>
+<td align="right">3.39</td>
+<td align="right">0.20</td>
 </tr>
 <tr class="even">
 <td align="left">shared_use_path</td>
@@ -122,10 +122,10 @@ a facility (a sidewalk with <code>bicycle=designated</code>, a road with
 </tr>
 <tr class="odd">
 <td align="left">protected_lane</td>
-<td align="right">110</td>
-<td align="right">6.97</td>
-<td align="right">4.33</td>
-<td align="right">0.25</td>
+<td align="right">162</td>
+<td align="right">12.73</td>
+<td align="right">7.91</td>
+<td align="right">0.46</td>
 </tr>
 <tr class="even">
 <td align="left">buffered_lane</td>
@@ -270,35 +270,35 @@ layer assigns to it.</p>
 <span><span class="co">#&gt; &lt;cl_comparison&gt; tolerance = 15 m</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     layer n_segments length_km matched_km matched_frac type_agreement</span></span>
-<span><span class="co">#&gt;       osm        413      27.5       25.0        0.908          0.506</span></span>
-<span><span class="co">#&gt;  official         55      17.9       16.6        0.927          0.399</span></span>
+<span><span class="co">#&gt;       osm        413      27.5       25.0        0.908          0.733</span></span>
+<span><span class="co">#&gt;  official         55      17.9       16.6        0.927          0.780</span></span>
 <span><span class="co">#&gt;  type_adjacent</span></span>
-<span><span class="co">#&gt;          0.558</span></span>
-<span><span class="co">#&gt;          0.462</span></span>
+<span><span class="co">#&gt;          0.785</span></span>
+<span><span class="co">#&gt;          0.836</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; By facility type:</span></span>
 <span><span class="co">#&gt;     layer   facility_type n_segments length_km matched_frac type_agreement</span></span>
-<span><span class="co">#&gt;       osm  separated_path        142      11.2        0.993          0.139</span></span>
+<span><span class="co">#&gt;       osm  separated_path         90       5.5        0.985          0.286</span></span>
 <span><span class="co">#&gt;       osm shared_use_path         53       2.3        0.506          0.458</span></span>
-<span><span class="co">#&gt;       osm  protected_lane        110       7.0        0.998          0.996</span></span>
+<span><span class="co">#&gt;       osm  protected_lane        162      12.7        0.999          0.993</span></span>
 <span><span class="co">#&gt;       osm   buffered_lane         18       1.7        0.976          0.676</span></span>
 <span><span class="co">#&gt;       osm    painted_lane         66       4.1        0.861          0.722</span></span>
 <span><span class="co">#&gt;       osm     shared_lane         24       1.3        0.473          0.000</span></span>
 <span><span class="co">#&gt;  official  separated_path          7       1.8        0.998          0.896</span></span>
-<span><span class="co">#&gt;  official shared_use_path          8       1.1        0.665          0.727</span></span>
-<span><span class="co">#&gt;  official  protected_lane         22      11.0        0.919          0.101</span></span>
+<span><span class="co">#&gt;  official shared_use_path          8       1.1        0.665          0.884</span></span>
+<span><span class="co">#&gt;  official  protected_lane         22      11.0        0.919          0.711</span></span>
 <span><span class="co">#&gt;  official   buffered_lane          4       1.0        1.000          1.000</span></span>
 <span><span class="co">#&gt;  official    painted_lane         14       3.0        0.987          0.845</span></span>
 <span><span class="co">#&gt;  type_adjacent</span></span>
-<span><span class="co">#&gt;          0.149</span></span>
+<span><span class="co">#&gt;          0.296</span></span>
 <span><span class="co">#&gt;          1.000</span></span>
-<span><span class="co">#&gt;          1.000</span></span>
+<span><span class="co">#&gt;          0.999</span></span>
 <span><span class="co">#&gt;          1.000</span></span>
 <span><span class="co">#&gt;          0.727</span></span>
 <span><span class="co">#&gt;          0.000</span></span>
 <span><span class="co">#&gt;          1.000</span></span>
 <span><span class="co">#&gt;          1.000</span></span>
-<span><span class="co">#&gt;          0.122</span></span>
+<span><span class="co">#&gt;          0.733</span></span>
 <span><span class="co">#&gt;          1.000</span></span>
 <span><span class="co">#&gt;          0.995</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -306,8 +306,8 @@ layer assigns to it.</p>
 <span><span class="co">#&gt;                  osm</span></span>
 <span><span class="co">#&gt; official          separated_path shared_use_path protected_lane buffered_lane</span></span>
 <span><span class="co">#&gt;   separated_path             1.6             0.2            0.0           0.0</span></span>
-<span><span class="co">#&gt;   shared_use_path            0.4             0.5            0.0           0.0</span></span>
-<span><span class="co">#&gt;   protected_lane             9.4             0.2            1.4           0.0</span></span>
+<span><span class="co">#&gt;   shared_use_path            0.2             0.7            0.0           0.0</span></span>
+<span><span class="co">#&gt;   protected_lane             3.0             0.2            7.8           0.0</span></span>
 <span><span class="co">#&gt;   buffered_lane              0.0             0.0            0.0           1.0</span></span>
 <span><span class="co">#&gt;   painted_lane               0.0             0.0            0.0           0.4</span></span>
 <span><span class="co">#&gt;                  osm</span></span>
@@ -324,8 +324,8 @@ columns are what OSM calls the same ground, in kilometres.</p>
 <span><span class="co">#&gt;                  osm</span></span>
 <span><span class="co">#&gt; official          separated_path shared_use_path protected_lane buffered_lane</span></span>
 <span><span class="co">#&gt;   separated_path             1.6             0.2            0.0           0.0</span></span>
-<span><span class="co">#&gt;   shared_use_path            0.4             0.5            0.0           0.0</span></span>
-<span><span class="co">#&gt;   protected_lane             9.4             0.2            1.4           0.0</span></span>
+<span><span class="co">#&gt;   shared_use_path            0.2             0.7            0.0           0.0</span></span>
+<span><span class="co">#&gt;   protected_lane             3.0             0.2            7.8           0.0</span></span>
 <span><span class="co">#&gt;   buffered_lane              0.0             0.0            0.0           1.0</span></span>
 <span><span class="co">#&gt;   painted_lane               0.0             0.0            0.0           0.4</span></span>
 <span><span class="co">#&gt;                  osm</span></span>
@@ -336,11 +336,20 @@ columns are what OSM calls the same ground, in kilometres.</p>
 <span><span class="co">#&gt;   buffered_lane            0.0       0.0</span></span>
 <span><span class="co">#&gt;   painted_lane             2.5       0.0</span></span></code></pre></div>
 <p>Downtown, both sources agree almost everywhere that
-<em>something</em> exists, but they disagree on <em>what</em> for about
-half the length. The largest cell off the diagonal is usually the city’s
-protected lanes that OSM mappers tagged as plain
-<code>cycleway=lane</code>, which is worth knowing before quoting either
-source’s protected-lane mileage.</p>
+<em>something</em> exists, and on <em>what</em> for roughly three
+quarters of the length. Most of the remaining disagreement is buffered
+versus painted lanes, which is often a tagging choice rather than a
+difference on the ground; <code>type_adjacent</code> counts those as
+near-misses.</p>
+<p>One convention mattered a lot here. Denver’s mappers draw the
+downtown protected lanes as their own <code>highway=cycleway</code> ways
+beside the road, named after the street (“14th Street”, “Lawrence
+Street”), rather than as a <code>cycleway=track</code> tag on the road.
+Read literally those are off-street trails, and before the classifier
+learned to recognise street-named cycleways as sidepaths, OSM showed 7
+km of protected lane downtown against the city’s 11 km and type
+agreement was near 50%. The rule is <code>sidepath_by_name</code>, on by
+default and documented in <code><a href="../reference/cl_classify.html">?cl_classify</a></code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cl_plot.html">cl_plot</a></span><span class="op">(</span><span class="va">cmp</span><span class="op">$</span><span class="va">official</span>, colour <span class="op">=</span> <span class="st">"type_match"</span>,</span>
 <span>        title <span class="op">=</span> <span class="st">"City segments: does OSM agree on the facility type?"</span><span class="op">)</span></span></code></pre></div>

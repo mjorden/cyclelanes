@@ -45,9 +45,9 @@ knitr::kable(cl_summary(lanes), digits = 2)
 
 | facility_type   | n_segments | length_km | length_mi | share |
 |:----------------|-----------:|----------:|----------:|------:|
-| separated_path  |        142 |     11.22 |      6.97 |  0.41 |
+| separated_path  |         90 |      5.46 |      3.39 |  0.20 |
 | shared_use_path |         53 |      2.29 |      1.42 |  0.08 |
-| protected_lane  |        110 |      6.97 |      4.33 |  0.25 |
+| protected_lane  |        162 |     12.73 |      7.91 |  0.46 |
 | buffered_lane   |         18 |      1.69 |      1.05 |  0.06 |
 | painted_lane    |         66 |      4.07 |      2.53 |  0.15 |
 | shared_lane     |         24 |      1.30 |      0.81 |  0.05 |
@@ -98,35 +98,35 @@ cmp
 #> <cl_comparison> tolerance = 15 m
 #> 
 #>     layer n_segments length_km matched_km matched_frac type_agreement
-#>       osm        413      27.5       25.0        0.908          0.506
-#>  official         55      17.9       16.6        0.927          0.399
+#>       osm        413      27.5       25.0        0.908          0.733
+#>  official         55      17.9       16.6        0.927          0.780
 #>  type_adjacent
-#>          0.558
-#>          0.462
+#>          0.785
+#>          0.836
 #> 
 #> By facility type:
 #>     layer   facility_type n_segments length_km matched_frac type_agreement
-#>       osm  separated_path        142      11.2        0.993          0.139
+#>       osm  separated_path         90       5.5        0.985          0.286
 #>       osm shared_use_path         53       2.3        0.506          0.458
-#>       osm  protected_lane        110       7.0        0.998          0.996
+#>       osm  protected_lane        162      12.7        0.999          0.993
 #>       osm   buffered_lane         18       1.7        0.976          0.676
 #>       osm    painted_lane         66       4.1        0.861          0.722
 #>       osm     shared_lane         24       1.3        0.473          0.000
 #>  official  separated_path          7       1.8        0.998          0.896
-#>  official shared_use_path          8       1.1        0.665          0.727
-#>  official  protected_lane         22      11.0        0.919          0.101
+#>  official shared_use_path          8       1.1        0.665          0.884
+#>  official  protected_lane         22      11.0        0.919          0.711
 #>  official   buffered_lane          4       1.0        1.000          1.000
 #>  official    painted_lane         14       3.0        0.987          0.845
 #>  type_adjacent
-#>          0.149
+#>          0.296
 #>          1.000
-#>          1.000
+#>          0.999
 #>          1.000
 #>          0.727
 #>          0.000
 #>          1.000
 #>          1.000
-#>          0.122
+#>          0.733
 #>          1.000
 #>          0.995
 #> 
@@ -134,8 +134,8 @@ cmp
 #>                  osm
 #> official          separated_path shared_use_path protected_lane buffered_lane
 #>   separated_path             1.6             0.2            0.0           0.0
-#>   shared_use_path            0.4             0.5            0.0           0.0
-#>   protected_lane             9.4             0.2            1.4           0.0
+#>   shared_use_path            0.2             0.7            0.0           0.0
+#>   protected_lane             3.0             0.2            7.8           0.0
 #>   buffered_lane              0.0             0.0            0.0           1.0
 #>   painted_lane               0.0             0.0            0.0           0.4
 #>                  osm
@@ -156,8 +156,8 @@ round(cmp$confusion, 1)
 #>                  osm
 #> official          separated_path shared_use_path protected_lane buffered_lane
 #>   separated_path             1.6             0.2            0.0           0.0
-#>   shared_use_path            0.4             0.5            0.0           0.0
-#>   protected_lane             9.4             0.2            1.4           0.0
+#>   shared_use_path            0.2             0.7            0.0           0.0
+#>   protected_lane             3.0             0.2            7.8           0.0
 #>   buffered_lane              0.0             0.0            0.0           1.0
 #>   painted_lane               0.0             0.0            0.0           0.4
 #>                  osm
@@ -170,10 +170,20 @@ round(cmp$confusion, 1)
 ```
 
 Downtown, both sources agree almost everywhere that *something* exists,
-but they disagree on *what* for about half the length. The largest cell
-off the diagonal is usually the city’s protected lanes that OSM mappers
-tagged as plain `cycleway=lane`, which is worth knowing before quoting
-either source’s protected-lane mileage.
+and on *what* for roughly three quarters of the length. Most of the
+remaining disagreement is buffered versus painted lanes, which is often
+a tagging choice rather than a difference on the ground; `type_adjacent`
+counts those as near-misses.
+
+One convention mattered a lot here. Denver’s mappers draw the downtown
+protected lanes as their own `highway=cycleway` ways beside the road,
+named after the street (“14th Street”, “Lawrence Street”), rather than
+as a `cycleway=track` tag on the road. Read literally those are
+off-street trails, and before the classifier learned to recognise
+street-named cycleways as sidepaths, OSM showed 7 km of protected lane
+downtown against the city’s 11 km and type agreement was near 50%. The
+rule is `sidepath_by_name`, on by default and documented in
+[`?cl_classify`](https://mjorden.github.io/cyclelanes/reference/cl_classify.md).
 
 ``` r
 

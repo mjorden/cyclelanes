@@ -48,7 +48,13 @@ gets a left, a right, and an overall classification.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">cl_classify</span><span class="op">(</span><span class="va">x</span>, drop_none <span class="op">=</span> <span class="cn">FALSE</span>, keep_tags <span class="op">=</span> <span class="cn">FALSE</span>, strict <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">cl_classify</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  drop_none <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  keep_tags <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  strict <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  sidepath_by_name <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -77,13 +83,23 @@ and <code>surface</code> survive from the input.</p></dd>
 bike-friendly are the bulk of what this removes; use it when you want
 on-road-quality kilometres only.</p></dd>
 
+
+<dt id="arg-sidepath-by-name">sidepath_by_name<a class="anchor" aria-label="anchor" href="#arg-sidepath-by-name"></a></dt>
+<dd><p>Treat a <code>highway=cycleway</code> named like a street
+(a suffix such as Street, St, Avenue, Ave, Boulevard, Blvd, Road, Rd,
+Drive, Dr, Way, Lane, Ln, Parkway, Pkwy, Place, Pl, Court, Ct, and not
+Trail, Path, Greenway, Bikeway) as a separately mapped on-street lane,
+i.e. a <code>protected_lane</code>. See rule 1.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An <code>sf</code> with columns <code>osm_id</code>, <code>name</code>, <code>highway</code>, <code>facility_type</code>,
 <code>facility_left</code>, <code>facility_right</code> (factors over <code><a href="cl_facility_levels.html">cl_facility_levels()</a></code>),
 <code>n_sides</code> (0-2, <code>NA</code> for separated paths), <code>contraflow</code>,
-<code>shared_with_pedestrians</code>, <code>oneway</code>, <code>surface</code>, <code>length_m</code>, and geometry.</p>
+<code>shared_with_pedestrians</code>, <code>mapped_separately</code> (a facility drawn as its
+own way rather than as a tag on the road), <code>oneway</code>, <code>surface</code>,
+<code>length_m</code>, and geometry.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -93,7 +109,17 @@ which case it is a <code>shared_use_path</code>. <code>highway=path</code>, <cod
 <code>pedestrian</code>, <code>track</code> or <code>bridleway</code> with <code>bicycle=designated</code> is a
 <code>shared_use_path</code>. A sidewalk (<code>footway=sidewalk</code> or <code>footway=crossing</code>)
 is never a facility, whatever its <code>bicycle</code> tag. Side columns are <code>NA</code>
-for paths.</p></li>
+for paths.
+A <code>highway=cycleway</code> that is really an on-street lane drawn as its own
+way – tagged <code>is_sidepath=yes</code>, or carrying <code>cycleway=track</code> /
+<code>cycleway:*=track</code> – is a <code>protected_lane</code> with
+<code>mapped_separately = TRUE</code>, so it lines up with a city inventory that
+files it under protected lanes rather than trails. With
+<code>sidepath_by_name = TRUE</code> (the default) a <code>highway=cycleway</code> whose
+<code>name</code> reads like a street ("14th Street", "Lawrence St") counts too,
+because mappers who draw a lane as its own way usually name it after
+the street, while trails are named as trails. It is a heuristic; turn
+it off where cycleways are routinely named after streets.</p></li>
 <li><p>Otherwise each side starts from <code>cycleway=*</code>, is overridden by
 <code>cycleway:both=*</code>, and then by <code>cycleway:left=*</code> / <code>cycleway:right=*</code>.</p></li>
 <li><p>A <code>painted_lane</code> side with a truthy <code>cycleway[:side]:buffer</code> tag

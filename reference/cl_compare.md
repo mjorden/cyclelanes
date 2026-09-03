@@ -72,35 +72,35 @@ cmp
 #> <cl_comparison> tolerance = 15 m
 #> 
 #>     layer n_segments length_km matched_km matched_frac type_agreement
-#>       osm        413      27.5       25.0        0.908          0.506
-#>  official         55      17.9       16.6        0.927          0.399
+#>       osm        413      27.5       25.0        0.908          0.733
+#>  official         55      17.9       16.6        0.927          0.780
 #>  type_adjacent
-#>          0.558
-#>          0.462
+#>          0.785
+#>          0.836
 #> 
 #> By facility type:
 #>     layer   facility_type n_segments length_km matched_frac type_agreement
-#>       osm  separated_path        142      11.2        0.993          0.139
+#>       osm  separated_path         90       5.5        0.985          0.286
 #>       osm shared_use_path         53       2.3        0.506          0.458
-#>       osm  protected_lane        110       7.0        0.998          0.996
+#>       osm  protected_lane        162      12.7        0.999          0.993
 #>       osm   buffered_lane         18       1.7        0.976          0.676
 #>       osm    painted_lane         66       4.1        0.861          0.722
 #>       osm     shared_lane         24       1.3        0.473          0.000
 #>  official  separated_path          7       1.8        0.998          0.896
-#>  official shared_use_path          8       1.1        0.665          0.727
-#>  official  protected_lane         22      11.0        0.919          0.101
+#>  official shared_use_path          8       1.1        0.665          0.884
+#>  official  protected_lane         22      11.0        0.919          0.711
 #>  official   buffered_lane          4       1.0        1.000          1.000
 #>  official    painted_lane         14       3.0        0.987          0.845
 #>  type_adjacent
-#>          0.149
+#>          0.296
 #>          1.000
-#>          1.000
+#>          0.999
 #>          1.000
 #>          0.727
 #>          0.000
 #>          1.000
 #>          1.000
-#>          0.122
+#>          0.733
 #>          1.000
 #>          0.995
 #> 
@@ -108,8 +108,8 @@ cmp
 #>                  osm
 #> official          separated_path shared_use_path protected_lane buffered_lane
 #>   separated_path             1.6             0.2            0.0           0.0
-#>   shared_use_path            0.4             0.5            0.0           0.0
-#>   protected_lane             9.4             0.2            1.4           0.0
+#>   shared_use_path            0.2             0.7            0.0           0.0
+#>   protected_lane             3.0             0.2            7.8           0.0
 #>   buffered_lane              0.0             0.0            0.0           1.0
 #>   painted_lane               0.0             0.0            0.0           0.4
 #>                  osm
@@ -123,8 +123,8 @@ cmp$confusion
 #>                  osm
 #> official          separated_path shared_use_path protected_lane buffered_lane
 #>   separated_path      1.60761845       0.1867519       0.000000     0.0000000
-#>   shared_use_path     0.36708781       0.5380917       0.000000     0.0000000
-#>   protected_lane      9.37085417       0.2170354       1.427907     0.0000000
+#>   shared_use_path     0.19492288       0.7102567       0.000000     0.0000000
+#>   protected_lane      2.97473308       0.2170354       7.824028     0.0000000
 #>   buffered_lane       0.00000000       0.0000000       0.000000     0.9652033
 #>   painted_lane        0.01438692       0.0000000       0.000000     0.4386228
 #>                  osm

@@ -8,7 +8,13 @@ and an overall classification.
 ## Usage
 
 ``` r
-cl_classify(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
+cl_classify(
+  x,
+  drop_none = FALSE,
+  keep_tags = FALSE,
+  strict = FALSE,
+  sidepath_by_name = TRUE
+)
 ```
 
 ## Arguments
@@ -38,14 +44,23 @@ cl_classify(x, drop_none = FALSE, keep_tags = FALSE, strict = FALSE)
   bike-friendly are the bulk of what this removes; use it when you want
   on-road-quality kilometres only.
 
+- sidepath_by_name:
+
+  Treat a `highway=cycleway` named like a street (a suffix such as
+  Street, St, Avenue, Ave, Boulevard, Blvd, Road, Rd, Drive, Dr, Way,
+  Lane, Ln, Parkway, Pkwy, Place, Pl, Court, Ct, and not Trail, Path,
+  Greenway, Bikeway) as a separately mapped on-street lane, i.e. a
+  `protected_lane`. See rule 1.
+
 ## Value
 
 An `sf` with columns `osm_id`, `name`, `highway`, `facility_type`,
 `facility_left`, `facility_right` (factors over
 [`cl_facility_levels()`](https://mjorden.github.io/cyclelanes/reference/cl_facility_levels.md)),
 `n_sides` (0-2, `NA` for separated paths), `contraflow`,
-`shared_with_pedestrians`, `oneway`, `surface`, `length_m`, and
-geometry.
+`shared_with_pedestrians`, `mapped_separately` (a facility drawn as its
+own way rather than as a tag on the road), `oneway`, `surface`,
+`length_m`, and geometry.
 
 ## Details
 
@@ -57,7 +72,18 @@ The rules, in order:
     `highway=path`, `footway`, `pedestrian`, `track` or `bridleway` with
     `bicycle=designated` is a `shared_use_path`. A sidewalk
     (`footway=sidewalk` or `footway=crossing`) is never a facility,
-    whatever its `bicycle` tag. Side columns are `NA` for paths.
+    whatever its `bicycle` tag. Side columns are `NA` for paths. A
+    `highway=cycleway` that is really an on-street lane drawn as its own
+    way – tagged `is_sidepath=yes`, or carrying `cycleway=track` /
+    `cycleway:*=track` – is a `protected_lane` with
+    `mapped_separately = TRUE`, so it lines up with a city inventory
+    that files it under protected lanes rather than trails. With
+    `sidepath_by_name = TRUE` (the default) a `highway=cycleway` whose
+    `name` reads like a street ("14th Street", "Lawrence St") counts
+    too, because mappers who draw a lane as its own way usually name it
+    after the street, while trails are named as trails. It is a
+    heuristic; turn it off where cycleways are routinely named after
+    streets.
 
 2.  Otherwise each side starts from `cycleway=*`, is overridden by
     `cycleway:both=*`, and then by `cycleway:left=*` /

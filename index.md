@@ -106,11 +106,13 @@ resolves `cycleway`, `cycleway:both`, `cycleway:left` and
 `cycleway:right` into a `facility_left` and a `facility_right`, upgrades
 painted lanes with a buffer tag, flags contraflow lanes, and reports the
 more protected side as `facility_type`. `cycleway=separate` (the lane is
-mapped as its own way) yields `none` so nothing is counted twice.
-Sidewalks (`footway=sidewalk`) are never facilities, whatever their
-`bicycle` tag, and `strict = TRUE` additionally drops shared-use paths
-with no paved surface tag, which removes most of the park footways that
-mappers mark bike-friendly.
+mapped as its own way) yields `none` so nothing is counted twice; the
+separately drawn way itself, when tagged `is_sidepath=yes` or
+`cycleway=track`, is a `protected_lane` with `mapped_separately = TRUE`
+rather than a trail. Sidewalks (`footway=sidewalk`) are never
+facilities, whatever their `bicycle` tag, and `strict = TRUE`
+additionally drops shared-use paths with no paved surface tag, which
+removes most of the park footways that mappers mark bike-friendly.
 
 ## Adding a city
 
