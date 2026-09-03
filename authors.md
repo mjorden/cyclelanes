@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/mjorden/cyclelanes/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/mjorden/cyclelanes/blob/v0.2.0/DESCRIPTION)
 
 Jorden M (2026). *cyclelanes: Fetch and Classify Bicycle Infrastructure
 from OpenStreetMap and City Open Data*. R package version 0.2.0,
